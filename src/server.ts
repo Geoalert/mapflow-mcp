@@ -8,7 +8,6 @@ import {
 	mapflowUserModelBlocksSchema,
 	mapflowUserModelsSchema,
 	mapflowUserStatusSchema,
-	mapflowUserTeamsSchema,
 } from "./schemas.js";
 
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
@@ -78,7 +77,7 @@ server.registerTool(
 				.string()
 				.min(1)
 				.describe(
-					"Workflow display name (e.g., 🏠 Buildings) from mapflow://user/models.",
+					"Workflow display name (e.g., 🏠 Buildings) from mapflow://models.",
 				),
 			geometry: geoJsonGeometrySchema.describe(
 				"GeoJSON geometry for the area of interest.",
@@ -150,8 +149,8 @@ server.registerTool(
 );
 
 server.registerResource(
-	"user-models",
-	"mapflow://user/models",
+	"models",
+	"mapflow://models",
 	{
 		title: "Mapflow user models",
 		description: "Available Mapflow models",
@@ -174,8 +173,8 @@ server.registerResource(
 );
 
 server.registerResource(
-	"user-model-blocks",
-	"mapflow://user/models/{modelId}/blocks",
+	"model-blocks",
+	"mapflow://models/{modelId}/blocks",
 	{
 		title: "Mapflow model blocks",
 		description: "Postprocessing blocks for a specific Mapflow model",
@@ -186,9 +185,7 @@ server.registerResource(
 		const segments = uri.pathname.split("/").filter(Boolean);
 		const modelId = segments[segments.length - 2];
 		if (!modelId || segments[segments.length - 1] !== "blocks") {
-			throw new Error(
-				"Invalid URI. Use mapflow://user/models/{modelId}/blocks",
-			);
+			throw new Error("Invalid URI. Use mapflow://models/{modelId}/blocks");
 		}
 
 		const model = (status.models ?? []).find((m) => m.id === modelId);
@@ -211,32 +208,8 @@ server.registerResource(
 );
 
 server.registerResource(
-	"user-teams",
-	"mapflow://user/teams",
-	{
-		title: "Mapflow user teams",
-		description: "Mapflow teams",
-		mimeType: "application/json",
-	},
-	async (uri) => {
-		const status = await getCachedUserStatus();
-		const teams = mapflowUserTeamsSchema.parse(status.teams ?? []);
-
-		return {
-			contents: [
-				{
-					uri: uri.href,
-					mimeType: "application/json",
-					text: JSON.stringify(teams, null, 2),
-				},
-			],
-		};
-	},
-);
-
-server.registerResource(
-	"user-limits",
-	"mapflow://user/limits",
+	"limits",
+	"mapflow://limits",
 	{
 		title: "Mapflow user limits",
 		description: "Current Mapflow usage limits",
