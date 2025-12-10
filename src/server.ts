@@ -1,70 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod";
+import { createMapflowClient } from "./mapflow-client.js";
 import {
 	geoJsonGeometrySchema,
 	mapflowProcessingSchema,
 	mapflowUserLimitsSchema,
 	mapflowUserModelBlocksSchema,
 	mapflowUserModelsSchema,
-	mapflowUserStatusSchema,
 } from "./schemas.js";
 
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
-
-const baseUrl = "https://api.mapflow.ai";
-const userStatusCacheTtlMs = 300_000;
-
-type UserStatus = z.infer<typeof mapflowUserStatusSchema>;
-
-let userStatusCache: { data: UserStatus; expiresAt: number } | null = null;
-
-function getMapflowToken() {
-	const token = Bun.env?.MAPFLOW_TOKEN ?? process.env.MAPFLOW_TOKEN;
-	if (!token) {
-		throw new Error(
-			"Mapflow API token is required. Please set MAPFLOW_TOKEN environment variable.",
-		);
-	}
-	return token;
-}
-
-async function fetchUserStatus(): Promise<UserStatus> {
-	const token = getMapflowToken();
-	const endpoint = new URL("/rest/user/status", baseUrl);
-
-	const response = await fetch(endpoint, {
-		headers: {
-			Authorization: `Basic ${token}`,
-			Accept: "application/json",
-		},
-	});
-
-	if (!response.ok) {
-		const body = await response.text();
-		throw new Error(
-			`Mapflow API request failed: ${response.status} ${response.statusText}${
-				body ? ` - ${body}` : ""
-			}`,
-		);
-	}
-
-	return mapflowUserStatusSchema.parse(await response.json());
-}
-
-async function getCachedUserStatus(): Promise<UserStatus> {
-	const now = Date.now();
-	if (userStatusCache && userStatusCache.expiresAt > now) {
-		return userStatusCache.data;
-	}
-
-	const fresh = await fetchUserStatus();
-	userStatusCache = {
-		data: fresh,
-		expiresAt: now + userStatusCacheTtlMs,
-	};
-	return fresh;
-}
+const mapflowClient = createMapflowClient();
 
 server.registerTool(
 	"start-processing",
@@ -95,36 +42,23 @@ server.registerTool(
 		},
 	},
 	async ({ name, wdName, geometry, params, meta }) => {
-		const token = getMapflowToken();
-		const endpoint = new URL("/rest/processings", baseUrl);
-
-		const response = await fetch(endpoint, {
-			method: "POST",
-			headers: {
-				Authorization: `Basic ${token}`,
-				Accept: "application/json",
-				"Content-Type": "application/json",
+		const parsed = await mapflowClient.requestJson(
+			"/rest/processings",
+			mapflowProcessingSchema,
+			{
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					name,
+					wdName,
+					geometry,
+					params: params ?? {},
+					meta: meta ?? {},
+				}),
 			},
-			body: JSON.stringify({
-				name,
-				wdName,
-				geometry,
-				params: params ?? {},
-				meta: meta ?? {},
-			}),
-		});
-
-		const rawBody = await response.text();
-
-		if (!response.ok) {
-			throw new Error(
-				`Mapflow API request failed: ${response.status} ${response.statusText}${
-					rawBody ? ` - ${rawBody}` : ""
-				}`,
-			);
-		}
-
-		const parsed = mapflowProcessingSchema.parse(JSON.parse(rawBody));
+		);
 
 		return {
 			content: [
@@ -157,7 +91,7 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri) => {
-		const status = await getCachedUserStatus();
+		const status = await mapflowClient.getCachedUserStatus();
 		const models = mapflowUserModelsSchema.parse(status.models ?? []);
 
 		return {
@@ -181,7 +115,7 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri) => {
-		const status = await getCachedUserStatus();
+		const status = await mapflowClient.getCachedUserStatus();
 		const segments = uri.pathname.split("/").filter(Boolean);
 		const modelId = segments[segments.length - 2];
 		if (!modelId || segments[segments.length - 1] !== "blocks") {
@@ -216,7 +150,7 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri) => {
-		const status = await fetchUserStatus();
+		const status = await mapflowClient.fetchUserStatus();
 		const limits = mapflowUserLimitsSchema.parse({
 			processedArea: status.processedArea,
 			remainingArea: status.remainingArea,
