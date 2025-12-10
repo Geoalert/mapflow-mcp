@@ -76,17 +76,15 @@ server.registerTool(
 	},
 );
 
-server.registerTool(
-	"get-user-status",
+server.registerResource(
+	"user-status",
+	"mapflow://user/status",
 	{
-		title: "Get Mapflow user status",
-		description:
-			"Fetch user status from Mapflow API",
-		outputSchema: mapflowUserStatusSchema,
+		title: "Mapflow user status",
+		description: "Fetch user status from Mapflow API",
+		mimeType: "application/json",
 	},
-	async () => {
-		type MapflowUserStatus = z.infer<typeof mapflowUserStatusSchema>;
-
+	async (uri) => {
 		const token = Bun.env?.MAPFLOW_TOKEN ?? process.env.MAPFLOW_TOKEN;
 
 		if (!token) {
@@ -116,13 +114,13 @@ server.registerTool(
 		const data = mapflowUserStatusSchema.parse(await response.json());
 
 		return {
-			content: [
+			contents: [
 				{
-					type: "text",
+					uri: uri.href,
+					mimeType: "application/json",
 					text: JSON.stringify(data, null, 2),
 				},
 			],
-			structuredContent: data,
 		};
 	},
 );
