@@ -43,6 +43,27 @@ export const mapflowUserStatusSchema = z
 	})
 	.catchall(z.unknown());
 
+export const mapflowUserProfileSchema = z
+	.object({
+		email: z.string().email().optional(),
+	})
+	.catchall(z.unknown());
+
+export const mapflowUserModelsSchema = z.array(mapflowModelSchema);
+
+export const mapflowUserTeamsSchema = z.array(mapflowTeamSchema);
+
+export const mapflowUserLimitsSchema = z
+	.object({
+		processedArea: z.number().optional(),
+		remainingArea: z.number().optional(),
+		areaLimit: z.number().optional(),
+		memoryLimit: z.number().optional(),
+	})
+	.catchall(z.unknown());
+
+export const mapflowUserModelBlocksSchema = z.array(mapflowModelBlockSchema);
+
 export const geoJsonGeometrySchema = z
 	.object({
 		type: z.string(),
