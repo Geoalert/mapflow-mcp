@@ -1,10 +1,11 @@
 # Mapflow MCP Server
 
+This project is mcp server for mapflow.ai api
+
 ## Main rules
 
-- This project is mcp server for mapflow.ai api
 - Use context7 to get actual mcp sdk docs
-- If you need to knwo about mapflow api, use context7 to get actual docs
+- Use context7 to get actual zod docs
 - Always use context7 if you work with some library or framework
 - Use context7 to get actual biome docs
 - Always run `bun validate` to check code style and linter issues after modifying code

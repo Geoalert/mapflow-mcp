@@ -1,77 +1,102 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import * as z from "zod";
+import {
+	geoJsonGeometrySchema,
+	mapflowProcessingSchema,
+	mapflowUserStatusSchema,
+} from "./schemas.js";
 
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
 
 const baseUrl = "https://api.mapflow.ai";
 
-const mapflowModelBlockSchema = z
-	.object({
-		name: z.string().optional(),
-		displayName: z.string().optional(),
-		optional: z.boolean().optional(),
-		price: z.number().optional(),
-	})
-	.catchall(z.unknown());
-
-const mapflowModelSchema = z
-	.object({
-		id: z.string().uuid().optional(),
-		name: z.string().optional(),
-		description: z.string().nullable().optional(),
-		created: z.string().optional(),
-		updated: z.string().optional(),
-		pricePerSqKm: z.number().optional(),
-		blocks: z.array(mapflowModelBlockSchema).optional(),
-	})
-	.catchall(z.unknown());
-
-const mapflowTeamSchema = z
-	.object({
-		teamId: z.string().uuid().optional(),
-		name: z.string().optional(),
-		role: z.string().optional(),
-		activeUntil: z.string().nullable().optional(),
-		creditsLimit: z.number().nullable().optional(),
-	})
-	.catchall(z.unknown());
-
-const mapflowUserStatusSchema = z
-	.object({
-		email: z.string().email().optional(),
-		processedArea: z.number().optional(),
-		remainingArea: z.number().optional(),
-		areaLimit: z.number().optional(),
-		memoryLimit: z.number().optional(),
-		models: z.array(mapflowModelSchema).optional(),
-		teams: z.array(mapflowTeamSchema).optional(),
-	})
-	.catchall(z.unknown());
+function getMapflowToken() {
+	const token = Bun.env?.MAPFLOW_TOKEN ?? process.env.MAPFLOW_TOKEN;
+	if (!token) {
+		throw new Error(
+			"Mapflow API token is required. Please set MAPFLOW_TOKEN environment variable.",
+		);
+	}
+	return token;
+}
 
 server.registerTool(
-	"hello",
+	"start-processing",
 	{
-		title: "Hello",
-		description:
-			"Return a friendly greeting to confirm the MCP server is responding.",
+		title: "Start Mapflow processing",
+		description: "Create a new Mapflow processing task with a GeoJSON AOI.",
 		inputSchema: {
-			name: z.string().optional().describe("Optional name to include."),
+			name: z.string().min(1).describe("Processing name to show in Mapflow."),
+			wdName: z
+				.string()
+				.min(1)
+				.describe("Workflow display name (e.g., 🏠 Buildings)."),
+			geometry: geoJsonGeometrySchema.describe(
+				"GeoJSON geometry for the area of interest.",
+			),
+			params: z
+				.record(z.string(), z.unknown())
+				.default({})
+				.optional()
+				.describe("Optional processing params."),
+			meta: z
+				.record(z.string(), z.unknown())
+				.default({})
+				.optional()
+				.describe("Optional metadata to store with the processing."),
 		},
 	},
-	async ({ name }) => {
-		const target =
-			typeof name === "string" && name.trim().length > 0
-				? name.trim()
-				: "world";
+	async ({ name, wdName, geometry, params, meta }) => {
+		const token = getMapflowToken();
+		const endpoint = new URL("/rest/processings", baseUrl);
+
+		const response = await fetch(endpoint, {
+			method: "POST",
+			headers: {
+				Authorization: `Basic ${token}`,
+				Accept: "application/json",
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				name,
+				wdName,
+				geometry,
+				params: params ?? {},
+				meta: meta ?? {},
+			}),
+		});
+
+		const rawBody = await response.text();
+
+		if (!response.ok) {
+			throw new Error(
+				`Mapflow API request failed: ${response.status} ${response.statusText}${
+					rawBody ? ` - ${rawBody}` : ""
+				}`,
+			);
+		}
+
+		const parsed = mapflowProcessingSchema.parse(JSON.parse(rawBody));
 
 		return {
 			content: [
 				{
 					type: "text",
-					text: `Hello, ${target}!`,
+					text: JSON.stringify(
+						{
+							id: parsed.id,
+							status: parsed.status,
+							vectorLayer: parsed.vectorLayer,
+							rasterLayer: parsed.rasterLayer,
+							resultRasterLayer: parsed.resultRasterLayer,
+						},
+						null,
+						2,
+					),
 				},
 			],
+			structuredContent: parsed,
 		};
 	},
 );
@@ -85,14 +110,7 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri) => {
-		const token = Bun.env?.MAPFLOW_TOKEN ?? process.env.MAPFLOW_TOKEN;
-
-		if (!token) {
-			throw new Error(
-				"Mapflow API token is required. Please set MAPFLOW_TOKEN environment variable.",
-			);
-		}
-
+		const token = getMapflowToken();
 		const endpoint = new URL("/rest/user/status", baseUrl);
 
 		const response = await fetch(endpoint, {
