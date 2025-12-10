@@ -31,7 +31,9 @@ server.registerTool(
 			wdName: z
 				.string()
 				.min(1)
-				.describe("Workflow display name (e.g., 🏠 Buildings)."),
+				.describe(
+					"Workflow display name (e.g., 🏠 Buildings) from mapflow://user/status.",
+				),
 			geometry: geoJsonGeometrySchema.describe(
 				"GeoJSON geometry for the area of interest.",
 			),
