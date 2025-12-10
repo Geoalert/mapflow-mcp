@@ -30,6 +30,21 @@
 - Use type-only imports (e.g., `import type { Foo }`) when `verbatimModuleSyntax` is enabled to satisfy TypeScript’s module rules.
 - Prefer `McpServer` from `@modelcontextprotocol/sdk/server/mcp.js` instead of the deprecated `Server` import.
 
+## Logging
+
+1. Use a logging library that writes to stderr or files
+2. For JavaScript, be especially careful - console.log() writes to stdout by default
+
+```ts
+// ❌ Bad (STDIO)
+console.log("Server started");
+
+// ✅ Good (STDIO)
+console.error("Server started"); // stderr is safe
+```
+​
+
+
 ## Bun
 
 Default to using Bun instead of Node.js.
