@@ -106,3 +106,19 @@ export const mapflowProcessingSchema = z
 		updated: z.string().optional(),
 	})
 	.catchall(z.unknown());
+
+// Nominatim API schemas
+export const nominatimResultSchema = z
+	.object({
+		place_id: z.number(),
+		osm_type: z.string().optional(),
+		osm_id: z.number().optional(),
+		lat: z.string(),
+		lon: z.string(),
+		display_name: z.string(),
+		boundingbox: z.array(z.string()).optional(),
+		geojson: geoJsonGeometrySchema.optional(),
+	})
+	.catchall(z.unknown());
+
+export const nominatimSearchResponseSchema = z.array(nominatimResultSchema);

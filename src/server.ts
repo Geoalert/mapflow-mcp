@@ -1,7 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import area from "@turf/area";
+import simplify from "@turf/simplify";
 import * as z from "zod";
 import { createMapflowClient } from "./mapflow-client.js";
+import { createNominatimClient } from "./nominatim-client.js";
 import {
 	geoJsonGeometrySchema,
 	mapflowProcessingSchema,
@@ -12,6 +15,7 @@ import {
 
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
 const mapflowClient = createMapflowClient();
+const nominatimClient = createNominatimClient();
 
 server.registerTool(
 	"start-processing",
@@ -78,6 +82,80 @@ server.registerTool(
 				},
 			],
 			structuredContent: parsed,
+		};
+	},
+);
+
+server.registerTool(
+	"get-geoboundary",
+	{
+		title: "Get Geoboundary",
+		description:
+			"Search for administrative boundaries by place name using OpenStreetMap Nominatim. Returns a GeoJSON polygon.",
+		inputSchema: {
+			query: z
+				.string()
+				.min(1)
+				.describe(
+					"Place name to search for (e.g., 'Moscow, Russia' or 'New York City')",
+				),
+		},
+	},
+	async ({ query }) => {
+		const result = await nominatimClient.searchBoundary(query);
+
+		if (!result) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `No boundary found for: ${query}`,
+					},
+				],
+			};
+		}
+
+		if (!result.geojson) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `No geometry found for: ${query}`,
+					},
+				],
+			};
+		}
+
+		const geometry = result.geojson as GeoJSON.Geometry;
+
+		// Calculate area in square meters using Turf.js
+		const areaM2 = area(geometry);
+		const areaKm2 = areaM2 / 1_000_000;
+
+		// Simplify geometry to reduce size (tolerance in degrees, ~0.001 ≈ 100m)
+		const simplifiedGeometry = simplify(geometry, {
+			tolerance: 0.001,
+			highQuality: true,
+		});
+
+		const output = {
+			displayName: result.display_name,
+			osmId: result.osm_id,
+			osmType: result.osm_type,
+			boundingbox: result.boundingbox,
+			geometry: simplifiedGeometry,
+			areaM2,
+			areaKm2,
+		};
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify(output, null, 2),
+				},
+			],
+			structuredContent: output,
 		};
 	},
 );
