@@ -11,6 +11,9 @@ bun run lint:ts      # TypeScript type checking (bunx tsc --noEmit)
 bun run lint         # Biome linting with auto-fix
 bun run format       # Biome formatting
 bun run validate     # Run all checks: lint:ts && lint && format
+bun test             # Run all tests
+bun test --watch     # Run tests in watch mode
+bun test <pattern>   # Run specific test file (e.g., bun test mapflow)
 ```
 
 Run the server directly: `bun run src/server.ts`
@@ -31,9 +34,10 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 ### Source Structure
 
 - `src/server.ts` - MCP server entry point; registers tools and resources
-- `src/mapflow-client.ts` - Mapflow API client with caching (5-minute TTL for user status)
-- `src/nominatim-client.ts` - OpenStreetMap Nominatim client with rate limiting and file caching
+- `src/mapflow-client.ts` - Mapflow API client with in-memory caching (5-minute TTL for user status)
+- `src/nominatim-client.ts` - OpenStreetMap Nominatim client with rate limiting (1 req/sec)
 - `src/schemas.ts` - Zod schemas for API validation (Mapflow models, processings, Nominatim results)
+- `src/__tests__/` - Test files using bun:test
 
 ### MCP Tools
 
@@ -45,6 +49,12 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 - `mapflow://models` - Lists available Mapflow AI models
 - `mapflow://models/{modelName}/blocks` - Postprocessing blocks for a specific model
 - `mapflow://limits` - User processing limits
+
+### Key Patterns
+
+- **API clients use factory functions** (`createMapflowClient()`, `createNominatimClient()`) that return typed interfaces
+- **Schema validation with Zod** - All API responses are validated; schemas use `.catchall(z.unknown())` for forward compatibility
+- **MCP tools return both text and structured content** for flexibility
 
 ### Key Dependencies
 
