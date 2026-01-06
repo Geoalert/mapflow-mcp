@@ -33,7 +33,7 @@ export const mapflowTeamSchema = z
 
 export const mapflowUserStatusSchema = z
 	.object({
-		email: z.string().email().optional(),
+		email: z.email().optional(),
 		processedArea: z.number().optional(),
 		remainingArea: z.number().optional(),
 		areaLimit: z.number().optional(),
@@ -45,11 +45,15 @@ export const mapflowUserStatusSchema = z
 
 export const mapflowUserProfileSchema = z
 	.object({
-		email: z.string().email().optional(),
+		email: z.email().optional(),
 	})
 	.catchall(z.unknown());
 
 export const mapflowUserModelsSchema = z.array(mapflowModelSchema);
+
+export const mapflowModelWithoutBlocksSchema = mapflowModelSchema.omit({
+	blocks: true,
+});
 
 export const mapflowUserTeamsSchema = z.array(mapflowTeamSchema);
 
@@ -63,6 +67,13 @@ export const mapflowUserLimitsSchema = z
 	.catchall(z.unknown());
 
 export const mapflowUserModelBlocksSchema = z.array(mapflowModelBlockSchema);
+
+export const mapflowProcessingBlockSchema = z
+	.object({
+		name: z.string(),
+		enabled: z.boolean(),
+	})
+	.catchall(z.unknown());
 
 export const geoJsonGeometrySchema = z
 	.object({

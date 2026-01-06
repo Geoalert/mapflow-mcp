@@ -1,10 +1,20 @@
 import type * as z from "zod";
-import { mapflowUserStatusSchema } from "./schemas.js";
+import {
+	type mapflowModelBlockSchema,
+	type mapflowModelWithoutBlocksSchema,
+	type mapflowUserLimitsSchema,
+	mapflowUserStatusSchema,
+} from "./schemas.js";
 
 const baseUrl = "https://api.mapflow.ai";
 const userStatusCacheTtlMs = 300_000;
 
 export type UserStatus = z.infer<typeof mapflowUserStatusSchema>;
+export type UserLimits = z.infer<typeof mapflowUserLimitsSchema>;
+export type ModelWithoutBlocks = z.infer<
+	typeof mapflowModelWithoutBlocksSchema
+>;
+export type ModelBlock = z.infer<typeof mapflowModelBlockSchema>;
 
 export type MapflowClient = {
 	request: (path: string, init?: RequestInit) => Promise<Response>;
@@ -15,6 +25,9 @@ export type MapflowClient = {
 	) => Promise<T>;
 	fetchUserStatus: () => Promise<UserStatus>;
 	getCachedUserStatus: () => Promise<UserStatus>;
+	getModels: () => Promise<ModelWithoutBlocks[]>;
+	getModelBlocks: (modelName: string) => Promise<ModelBlock[] | null>;
+	getLimits: () => Promise<UserLimits>;
 };
 
 export function getMapflowToken() {
@@ -88,10 +101,39 @@ export function createMapflowClient(): MapflowClient {
 		return fresh;
 	};
 
+	const getModels = async (): Promise<ModelWithoutBlocks[]> => {
+		const status = await getCachedUserStatus();
+		return (status.models ?? []).map((model) => {
+			const { blocks: _, ...modelWithoutBlocks } = model;
+			return modelWithoutBlocks;
+		});
+	};
+
+	const getModelBlocks = async (
+		modelName: string,
+	): Promise<ModelBlock[] | null> => {
+		const status = await getCachedUserStatus();
+		const model = (status.models ?? []).find((m) => m.name === modelName);
+		return model?.blocks ?? null;
+	};
+
+	const getLimits = async (): Promise<UserLimits> => {
+		const status = await fetchUserStatus();
+		return {
+			processedArea: status.processedArea,
+			remainingArea: status.remainingArea,
+			areaLimit: status.areaLimit,
+			memoryLimit: status.memoryLimit,
+		};
+	};
+
 	return {
 		request,
 		requestJson,
 		fetchUserStatus,
 		getCachedUserStatus,
+		getModels,
+		getModelBlocks,
+		getLimits,
 	};
 }

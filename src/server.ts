@@ -1,4 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+	McpServer,
+	ResourceTemplate,
+} from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import area from "@turf/area";
 import simplify from "@turf/simplify";
@@ -7,10 +10,8 @@ import { createMapflowClient } from "./mapflow-client.js";
 import { createNominatimClient } from "./nominatim-client.js";
 import {
 	geoJsonGeometrySchema,
+	mapflowProcessingBlockSchema,
 	mapflowProcessingSchema,
-	mapflowUserLimitsSchema,
-	mapflowUserModelBlocksSchema,
-	mapflowUserModelsSchema,
 } from "./schemas.js";
 
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
@@ -43,9 +44,15 @@ server.registerTool(
 				.default({})
 				.optional()
 				.describe("Optional metadata to store with the processing."),
+			blocks: z
+				.array(mapflowProcessingBlockSchema)
+				.optional()
+				.describe(
+					"Optional postprocessing blocks configuration. Use blocks from mapflow://models/{modelId}/blocks.",
+				),
 		},
 	},
-	async ({ name, wdName, geometry, params, meta }) => {
+	async ({ name, wdName, geometry, params, meta, blocks }) => {
 		const parsed = await mapflowClient.requestJson(
 			"/rest/processings",
 			mapflowProcessingSchema,
@@ -60,6 +67,7 @@ server.registerTool(
 					geometry,
 					params: params ?? {},
 					meta: meta ?? {},
+					blocks,
 				}),
 			},
 		);
@@ -169,8 +177,7 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri) => {
-		const status = await mapflowClient.getCachedUserStatus();
-		const models = mapflowUserModelsSchema.parse(status.models ?? []);
+		const models = await mapflowClient.getModels();
 
 		return {
 			contents: [
@@ -186,26 +193,39 @@ server.registerResource(
 
 server.registerResource(
 	"model-blocks",
-	"mapflow://models/{modelId}/blocks",
+	new ResourceTemplate("mapflow://models/{modelName}/blocks", {
+		list: async () => {
+			const models = await mapflowClient.getModels();
+			return {
+				resources: models
+					.filter((model) => {
+						return typeof model.name === "string" && model.name.length > 0;
+					})
+					.map((model) => {
+						const modelName = model.name ?? "";
+						return {
+							uri: `mapflow://models/${encodeURIComponent(modelName)}/blocks`,
+							name: modelName,
+						};
+					}),
+			};
+		},
+	}),
 	{
 		title: "Mapflow model blocks",
 		description: "Postprocessing blocks for a specific Mapflow model",
 		mimeType: "application/json",
 	},
-	async (uri) => {
-		const status = await mapflowClient.getCachedUserStatus();
-		const segments = uri.pathname.split("/").filter(Boolean);
-		const modelId = segments[segments.length - 2];
-		if (!modelId || segments[segments.length - 1] !== "blocks") {
-			throw new Error("Invalid URI. Use mapflow://models/{modelId}/blocks");
+	async (uri, { modelName }) => {
+		const name = Array.isArray(modelName) ? modelName[0] : modelName;
+		if (!name) {
+			throw new Error("Model name is required");
 		}
 
-		const model = (status.models ?? []).find((m) => m.id === modelId);
-		if (!model) {
-			throw new Error(`Model not found for id ${modelId}`);
+		const blocks = await mapflowClient.getModelBlocks(name);
+		if (!blocks) {
+			throw new Error(`Model not found for name: ${name}`);
 		}
-
-		const blocks = mapflowUserModelBlocksSchema.parse(model.blocks ?? []);
 
 		return {
 			contents: [
@@ -228,13 +248,7 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri) => {
-		const status = await mapflowClient.fetchUserStatus();
-		const limits = mapflowUserLimitsSchema.parse({
-			processedArea: status.processedArea,
-			remainingArea: status.remainingArea,
-			areaLimit: status.areaLimit,
-			memoryLimit: status.memoryLimit,
-		});
+		const limits = await mapflowClient.getLimits();
 
 		return {
 			contents: [
