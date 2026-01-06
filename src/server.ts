@@ -217,7 +217,8 @@ server.registerResource(
 		mimeType: "application/json",
 	},
 	async (uri, { modelName }) => {
-		const name = Array.isArray(modelName) ? modelName[0] : modelName;
+		const rawName = Array.isArray(modelName) ? modelName[0] : modelName;
+		const name = rawName ? decodeURIComponent(rawName) : undefined;
 		if (!name) {
 			throw new Error("Model name is required");
 		}
