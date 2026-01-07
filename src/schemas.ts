@@ -31,15 +31,38 @@ export const mapflowTeamSchema = z
 	})
 	.catchall(z.unknown());
 
+export const mapflowDataProviderPriceSchema = z
+	.object({
+		zoom: z.number().optional(),
+		priceSqKm: z.number().optional(),
+	})
+	.catchall(z.unknown());
+
+export const mapflowDataProviderSchema = z
+	.object({
+		id: z.uuid().optional(),
+		name: z.string().optional(),
+		displayName: z.string().optional(),
+		previewUrl: z.string().optional(),
+		previewUrlMaxZoom: z.number().optional(),
+		price: z.array(mapflowDataProviderPriceSchema).optional(),
+	})
+	.catchall(z.unknown());
+
 export const mapflowUserStatusSchema = z
 	.object({
 		email: z.email().optional(),
 		processedArea: z.number().optional(),
 		remainingArea: z.number().optional(),
+		remainingCredits: z.number().optional(),
 		areaLimit: z.number().optional(),
+		maxAoisPerProcessing: z.number().optional(),
 		memoryLimit: z.number().optional(),
+		billingType: z.union([z.number(), z.string()]).optional(),
 		models: z.array(mapflowModelSchema).optional(),
 		teams: z.array(mapflowTeamSchema).optional(),
+		dataProviders: z.array(mapflowDataProviderSchema).optional(),
+		reviewWorkflowEnabled: z.boolean().optional(),
 	})
 	.catchall(z.unknown());
 

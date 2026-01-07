@@ -1,5 +1,6 @@
 import type * as z from "zod";
 import {
+	type mapflowDataProviderSchema,
 	type mapflowModelBlockSchema,
 	type mapflowModelWithoutBlocksSchema,
 	type mapflowUserLimitsSchema,
@@ -15,6 +16,7 @@ export type ModelWithoutBlocks = z.infer<
 	typeof mapflowModelWithoutBlocksSchema
 >;
 export type ModelBlock = z.infer<typeof mapflowModelBlockSchema>;
+export type DataProvider = z.infer<typeof mapflowDataProviderSchema>;
 
 export type MapflowClient = {
 	request: (path: string, init?: RequestInit) => Promise<Response>;
@@ -28,6 +30,7 @@ export type MapflowClient = {
 	getModels: () => Promise<ModelWithoutBlocks[]>;
 	getModelBlocks: (modelName: string) => Promise<ModelBlock[] | null>;
 	getLimits: () => Promise<UserLimits>;
+	getImagerySources: () => Promise<DataProvider[]>;
 };
 
 export function getMapflowToken() {
@@ -127,6 +130,11 @@ export function createMapflowClient(): MapflowClient {
 		};
 	};
 
+	const getImagerySources = async (): Promise<DataProvider[]> => {
+		const status = await getCachedUserStatus();
+		return status.dataProviders ?? [];
+	};
+
 	return {
 		request,
 		requestJson,
@@ -135,5 +143,6 @@ export function createMapflowClient(): MapflowClient {
 		getModels,
 		getModelBlocks,
 		getLimits,
+		getImagerySources,
 	};
 }

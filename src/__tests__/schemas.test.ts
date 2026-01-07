@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import {
 	geoJsonGeometrySchema,
+	mapflowDataProviderPriceSchema,
+	mapflowDataProviderSchema,
 	mapflowModelSchema,
 	mapflowUserStatusSchema,
 	nominatimResultSchema,
@@ -12,10 +14,15 @@ describe("mapflowUserStatusSchema", () => {
 			email: "user@example.com",
 			processedArea: 150.5,
 			remainingArea: 849.5,
+			remainingCredits: 1000,
 			areaLimit: 1000,
+			maxAoisPerProcessing: 10,
 			memoryLimit: 512,
+			billingType: 1,
 			models: [],
 			teams: [],
+			dataProviders: [],
+			reviewWorkflowEnabled: true,
 		};
 
 		const result = mapflowUserStatusSchema.safeParse(validData);
@@ -47,6 +54,38 @@ describe("mapflowUserStatusSchema", () => {
 		if (result.success) {
 			expect(result.data.unknownField).toBe("some value");
 		}
+	});
+
+	test("validates dataProviders array", () => {
+		const validData = {
+			dataProviders: [
+				{
+					id: "550e8400-e29b-41d4-a716-446655440000",
+					name: "maxar",
+					displayName: "Maxar SecureWatch",
+					previewUrl: "https://example.com/tiles/{z}/{x}/{y}",
+					previewUrlMaxZoom: 18,
+					price: [{ zoom: 18, priceSqKm: 0.5 }],
+				},
+			],
+		};
+
+		const result = mapflowUserStatusSchema.safeParse(validData);
+		expect(result.success).toBe(true);
+	});
+
+	test("validates reviewWorkflowEnabled boolean", () => {
+		const withTrue = { reviewWorkflowEnabled: true };
+		const withFalse = { reviewWorkflowEnabled: false };
+
+		expect(mapflowUserStatusSchema.safeParse(withTrue).success).toBe(true);
+		expect(mapflowUserStatusSchema.safeParse(withFalse).success).toBe(true);
+	});
+
+	test("rejects non-boolean reviewWorkflowEnabled", () => {
+		const invalidData = { reviewWorkflowEnabled: "yes" };
+		const result = mapflowUserStatusSchema.safeParse(invalidData);
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -183,5 +222,81 @@ describe("geoJsonGeometrySchema", () => {
 
 		const result = geoJsonGeometrySchema.safeParse(noType);
 		expect(result.success).toBe(false);
+	});
+});
+
+describe("mapflowDataProviderPriceSchema", () => {
+	test("validates complete price object", () => {
+		const validPrice = {
+			zoom: 18,
+			priceSqKm: 0.5,
+		};
+
+		const result = mapflowDataProviderPriceSchema.safeParse(validPrice);
+		expect(result.success).toBe(true);
+	});
+
+	test("validates empty object (all fields optional)", () => {
+		const result = mapflowDataProviderPriceSchema.safeParse({});
+		expect(result.success).toBe(true);
+	});
+
+	test("allows extra fields via catchall", () => {
+		const dataWithExtras = {
+			zoom: 18,
+			unknownField: "value",
+		};
+
+		const result = mapflowDataProviderPriceSchema.safeParse(dataWithExtras);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.unknownField).toBe("value");
+		}
+	});
+});
+
+describe("mapflowDataProviderSchema", () => {
+	test("validates complete data provider", () => {
+		const validProvider = {
+			id: "550e8400-e29b-41d4-a716-446655440000",
+			name: "maxar",
+			displayName: "Maxar SecureWatch",
+			previewUrl: "https://example.com/tiles/{z}/{x}/{y}",
+			previewUrlMaxZoom: 18,
+			price: [
+				{ zoom: 17, priceSqKm: 0.3 },
+				{ zoom: 18, priceSqKm: 0.5 },
+			],
+		};
+
+		const result = mapflowDataProviderSchema.safeParse(validProvider);
+		expect(result.success).toBe(true);
+	});
+
+	test("validates empty object (all fields optional)", () => {
+		const result = mapflowDataProviderSchema.safeParse({});
+		expect(result.success).toBe(true);
+	});
+
+	test("rejects invalid uuid for id", () => {
+		const invalidProvider = {
+			id: "not-a-uuid",
+		};
+
+		const result = mapflowDataProviderSchema.safeParse(invalidProvider);
+		expect(result.success).toBe(false);
+	});
+
+	test("allows extra fields via catchall", () => {
+		const dataWithExtras = {
+			name: "provider",
+			customField: true,
+		};
+
+		const result = mapflowDataProviderSchema.safeParse(dataWithExtras);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.customField).toBe(true);
+		}
 	});
 });

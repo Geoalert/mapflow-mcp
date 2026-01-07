@@ -195,20 +195,25 @@ server.registerResource(
 	"model-blocks",
 	new ResourceTemplate("mapflow://models/{modelName}/blocks", {
 		list: async () => {
-			const models = await mapflowClient.getModels();
-			return {
-				resources: models
-					.filter((model) => {
-						return typeof model.name === "string" && model.name.length > 0;
-					})
-					.map((model) => {
-						const modelName = model.name ?? "";
-						return {
-							uri: `mapflow://models/${encodeURIComponent(modelName)}/blocks`,
-							name: modelName,
-						};
-					}),
-			};
+			try {
+				const models = await mapflowClient.getModels();
+				return {
+					resources: models
+						.filter((model) => {
+							return typeof model.name === "string" && model.name.length > 0;
+						})
+						.map((model) => {
+							const modelName = model.name ?? "";
+							return {
+								uri: `mapflow://models/${encodeURIComponent(modelName)}/blocks`,
+								name: modelName,
+							};
+						}),
+				};
+			} catch (error) {
+				console.error("Error fetching models:", error);
+				return { resources: [] };
+			}
 		},
 	}),
 	{
@@ -257,6 +262,29 @@ server.registerResource(
 					uri: uri.href,
 					mimeType: "application/json",
 					text: JSON.stringify(limits, null, 2),
+				},
+			],
+		};
+	},
+);
+
+server.registerResource(
+	"imagery-sources",
+	"mapflow://imagery-sources",
+	{
+		title: "Mapflow imagery sources",
+		description: "Available imagery sources for processing",
+		mimeType: "application/json",
+	},
+	async (uri) => {
+		const sources = await mapflowClient.getImagerySources();
+
+		return {
+			contents: [
+				{
+					uri: uri.href,
+					mimeType: "application/json",
+					text: JSON.stringify(sources, null, 2),
 				},
 			],
 		};

@@ -49,6 +49,7 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 - `mapflow://models` - Lists available Mapflow AI models
 - `mapflow://models/{modelName}/blocks` - Postprocessing blocks for a specific model
 - `mapflow://limits` - User processing limits
+- `mapflow://imagery-sources` - Available imagery sources for processing
 
 ### Key Patterns
 
