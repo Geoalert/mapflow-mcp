@@ -172,3 +172,213 @@ describe("getCachedUserStatus", () => {
 		expect(mockFetch).toHaveBeenCalledTimes(2); // Cache expired
 	});
 });
+
+const mockProcessing = {
+	id: "550e8400-e29b-41d4-a716-446655440000",
+	name: "Test Processing",
+	status: "IN_PROGRESS",
+	percentCompleted: 50,
+	cost: 10.5,
+	vectorLayer: {
+		id: "660e8400-e29b-41d4-a716-446655440001",
+		name: "Buildings",
+		tileJsonUrl: "https://example.com/tiles.json",
+	},
+	rasterLayer: null,
+	resultRasterLayer: null,
+	messages: [],
+};
+
+const mockGeometry = {
+	type: "Polygon",
+	coordinates: [
+		[
+			[0, 0],
+			[1, 0],
+			[1, 1],
+			[0, 1],
+			[0, 0],
+		],
+	],
+};
+
+describe("createProcessing", () => {
+	let originalFetch: typeof fetch;
+	let mockFetch: ReturnType<typeof mock>;
+	const originalEnv = { ...process.env };
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		mockFetch = mock(() =>
+			Promise.resolve(
+				new Response(JSON.stringify(mockProcessing), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			),
+		);
+		globalThis.fetch = mockFetch as unknown as typeof fetch;
+		process.env.MAPFLOW_TOKEN = "test-token";
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		process.env = { ...originalEnv };
+	});
+
+	test("sends POST request to /rest/processings/v2", async () => {
+		const client = createMapflowClient();
+		await client.createProcessing({
+			name: "Test",
+			wdName: "🏠 Buildings",
+			geometry: mockGeometry,
+		});
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		const [url, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		expect(url.toString()).toBe("https://api.mapflow.ai/rest/processings/v2");
+		expect(init.method).toBe("POST");
+	});
+
+	test("transforms flat input to v2 nested params", async () => {
+		const client = createMapflowClient();
+		await client.createProcessing({
+			name: "Test",
+			wdName: "🏠 Buildings",
+			geometry: mockGeometry,
+			dataProvider: { name: "Mapbox", zoom: 18 },
+			inferenceParams: { threshold: 0.5 },
+		});
+
+		const [, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		const body = JSON.parse(init.body as string);
+
+		expect(body.params.sourceParams.dataProvider).toEqual({
+			name: "Mapbox",
+			zoom: 18,
+		});
+		expect(body.params.inferenceParams).toEqual({ threshold: 0.5 });
+	});
+
+	test("returns parsed processing response", async () => {
+		const client = createMapflowClient();
+		const result = await client.createProcessing({
+			name: "Test",
+			wdName: "🏠 Buildings",
+			geometry: mockGeometry,
+		});
+
+		expect(result.id).toBe(mockProcessing.id);
+		expect(result.status).toBe("IN_PROGRESS");
+	});
+});
+
+describe("getProcessing", () => {
+	let originalFetch: typeof fetch;
+	let mockFetch: ReturnType<typeof mock>;
+	const originalEnv = { ...process.env };
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		mockFetch = mock(() =>
+			Promise.resolve(
+				new Response(JSON.stringify(mockProcessing), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			),
+		);
+		globalThis.fetch = mockFetch as unknown as typeof fetch;
+		process.env.MAPFLOW_TOKEN = "test-token";
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		process.env = { ...originalEnv };
+	});
+
+	test("sends GET request to /rest/processings/{id}/v2", async () => {
+		const client = createMapflowClient();
+		const processingId = "550e8400-e29b-41d4-a716-446655440000";
+		await client.getProcessing(processingId);
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		const [url] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		expect(url.toString()).toBe(
+			`https://api.mapflow.ai/rest/processings/${processingId}/v2`,
+		);
+	});
+
+	test("returns parsed processing with status and progress", async () => {
+		const client = createMapflowClient();
+		const result = await client.getProcessing(mockProcessing.id);
+
+		expect(result.id).toBe(mockProcessing.id);
+		expect(result.status).toBe("IN_PROGRESS");
+		expect(result.percentCompleted).toBe(50);
+	});
+});
+
+describe("calculateCost", () => {
+	let originalFetch: typeof fetch;
+	let mockFetch: ReturnType<typeof mock>;
+	const originalEnv = { ...process.env };
+
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
+		mockFetch = mock(() =>
+			Promise.resolve(
+				new Response("15.5", {
+					status: 200,
+					headers: { "Content-Type": "text/plain" },
+				}),
+			),
+		);
+		globalThis.fetch = mockFetch as unknown as typeof fetch;
+		process.env.MAPFLOW_TOKEN = "test-token";
+	});
+
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		process.env = { ...originalEnv };
+	});
+
+	test("sends POST request to /rest/processing/cost/v2", async () => {
+		const client = createMapflowClient();
+		await client.calculateCost({
+			wdName: "🏠 Buildings",
+			geometry: mockGeometry,
+		});
+
+		expect(mockFetch).toHaveBeenCalledTimes(1);
+		const [url, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		expect(url.toString()).toBe(
+			"https://api.mapflow.ai/rest/processing/cost/v2",
+		);
+		expect(init.method).toBe("POST");
+	});
+
+	test("accepts areaSqKm instead of geometry", async () => {
+		const client = createMapflowClient();
+		await client.calculateCost({
+			wdName: "🏠 Buildings",
+			areaSqKm: 10,
+		});
+
+		const [, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		const body = JSON.parse(init.body as string);
+
+		expect(body.areaSqKm).toBe(10);
+		expect(body.geometry).toBeUndefined();
+	});
+
+	test("returns cost as number", async () => {
+		const client = createMapflowClient();
+		const cost = await client.calculateCost({
+			wdName: "🏠 Buildings",
+			geometry: mockGeometry,
+		});
+
+		expect(cost).toBe(15.5);
+	});
+});

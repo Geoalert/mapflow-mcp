@@ -98,6 +98,45 @@ export const mapflowProcessingBlockSchema = z
 	})
 	.catchall(z.unknown());
 
+// V2 API schemas
+export const mapflowDataProviderParamsSchema = z
+	.object({
+		name: z.string(),
+		zoom: z.number().optional(),
+	})
+	.catchall(z.unknown());
+
+export const mapflowSourceParamsSchema = z
+	.object({
+		dataProvider: mapflowDataProviderParamsSchema.optional(),
+	})
+	.catchall(z.unknown());
+
+export const mapflowInferenceParamsSchema = z
+	.record(z.string(), z.unknown())
+	.optional();
+
+export const mapflowProcessingParamsSchema = z
+	.object({
+		sourceParams: mapflowSourceParamsSchema.optional(),
+		inferenceParams: mapflowInferenceParamsSchema,
+	})
+	.catchall(z.unknown());
+
+export const mapflowReviewStatusSchema = z
+	.object({
+		status: z.string().optional(),
+		feedback: z.string().optional(),
+	})
+	.catchall(z.unknown());
+
+export const mapflowRatingSchema = z
+	.object({
+		rating: z.number().optional(),
+		feedback: z.string().optional(),
+	})
+	.catchall(z.unknown());
+
 export const geoJsonGeometrySchema = z
 	.object({
 		type: z.string(),
@@ -129,11 +168,11 @@ export const mapflowProcessingSchema = z
 		area: z.number().optional(),
 		cost: z.number().optional(),
 		status: z.string().optional(),
-		reviewStatus: z.string().nullable().optional(),
-		rating: z.number().nullable().optional(),
+		reviewStatus: mapflowReviewStatusSchema.nullable().optional(),
+		rating: mapflowRatingSchema.nullable().optional(),
 		percentCompleted: z.number().optional(),
-		params: z.record(z.string(), z.unknown()).optional(),
-		blocks: z.array(z.unknown()).optional(),
+		params: mapflowProcessingParamsSchema.optional(),
+		blocks: z.array(mapflowProcessingBlockSchema).optional(),
 		meta: z.record(z.string(), z.unknown()).optional(),
 		messages: z.array(z.unknown()).optional(),
 		created: z.string().optional(),
@@ -156,3 +195,28 @@ export const nominatimResultSchema = z
 	.catchall(z.unknown());
 
 export const nominatimSearchResponseSchema = z.array(nominatimResultSchema);
+
+// Request schemas for v2 API
+export const createProcessingRequestSchema = z.object({
+	name: z.string().min(1),
+	wdName: z.string().min(1),
+	geometry: geoJsonGeometrySchema,
+	dataProvider: mapflowDataProviderParamsSchema.optional(),
+	inferenceParams: z.record(z.string(), z.unknown()).optional(),
+	blocks: z.array(mapflowProcessingBlockSchema).optional(),
+	meta: z.record(z.string(), z.unknown()).optional(),
+});
+
+export type CreateProcessingRequest = z.infer<
+	typeof createProcessingRequestSchema
+>;
+
+export const calculateCostRequestSchema = z.object({
+	wdName: z.string().min(1),
+	geometry: geoJsonGeometrySchema.optional(),
+	areaSqKm: z.number().optional(),
+	dataProvider: mapflowDataProviderParamsSchema.optional(),
+	blocks: z.array(mapflowProcessingBlockSchema).optional(),
+});
+
+export type CalculateCostRequest = z.infer<typeof calculateCostRequestSchema>;

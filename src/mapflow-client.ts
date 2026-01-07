@@ -1,11 +1,18 @@
 import type * as z from "zod";
 import {
+	type CalculateCostRequest,
+	type CreateProcessingRequest,
 	type mapflowDataProviderSchema,
 	type mapflowModelBlockSchema,
 	type mapflowModelWithoutBlocksSchema,
+	mapflowProcessingSchema,
 	type mapflowUserLimitsSchema,
 	mapflowUserStatusSchema,
 } from "./schemas.js";
+
+export type { CreateProcessingRequest, CalculateCostRequest };
+
+export type Processing = z.infer<typeof mapflowProcessingSchema>;
 
 const baseUrl = "https://api.mapflow.ai";
 const userStatusCacheTtlMs = 300_000;
@@ -31,6 +38,10 @@ export type MapflowClient = {
 	getModelBlocks: (modelName: string) => Promise<ModelBlock[] | null>;
 	getLimits: () => Promise<UserLimits>;
 	getImagerySources: () => Promise<DataProvider[]>;
+	// V2 API methods
+	createProcessing: (request: CreateProcessingRequest) => Promise<Processing>;
+	getProcessing: (id: string) => Promise<Processing>;
+	calculateCost: (request: CalculateCostRequest) => Promise<number>;
 };
 
 export function getMapflowToken() {
@@ -135,6 +146,58 @@ export function createMapflowClient(): MapflowClient {
 		return status.dataProviders ?? [];
 	};
 
+	// V2 API methods
+	const createProcessing = async (
+		req: CreateProcessingRequest,
+	): Promise<Processing> => {
+		const body = {
+			name: req.name,
+			wdName: req.wdName,
+			geometry: req.geometry,
+			params: {
+				sourceParams: req.dataProvider
+					? { dataProvider: req.dataProvider }
+					: undefined,
+				inferenceParams: req.inferenceParams,
+			},
+			blocks: req.blocks,
+			meta: req.meta,
+		};
+
+		return requestJson("/rest/processings/v2", mapflowProcessingSchema, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+	};
+
+	const getProcessing = async (id: string): Promise<Processing> => {
+		return requestJson(`/rest/processings/${id}/v2`, mapflowProcessingSchema);
+	};
+
+	const calculateCost = async (req: CalculateCostRequest): Promise<number> => {
+		const body = {
+			wdName: req.wdName,
+			geometry: req.geometry,
+			areaSqKm: req.areaSqKm,
+			params: {
+				sourceParams: req.dataProvider
+					? { dataProvider: req.dataProvider }
+					: undefined,
+			},
+			blocks: req.blocks,
+		};
+
+		const response = await request("/rest/processing/cost/v2", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+
+		const text = await response.text();
+		return Number.parseFloat(text);
+	};
+
 	return {
 		request,
 		requestJson,
@@ -144,5 +207,8 @@ export function createMapflowClient(): MapflowClient {
 		getModelBlocks,
 		getLimits,
 		getImagerySources,
+		createProcessing,
+		getProcessing,
+		calculateCost,
 	};
 }

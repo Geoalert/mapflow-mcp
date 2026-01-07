@@ -41,7 +41,9 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 
 ### MCP Tools
 
-- `start-processing` - Creates Mapflow processing tasks with GeoJSON AOI
+- `start-processing` - Creates Mapflow processing tasks with GeoJSON AOI (v2 API)
+- `get-processing` - Gets status and results of a processing task by ID
+- `calculate-cost` - Estimates cost in credits before starting a processing
 - `get-geoboundary` - Searches OSM Nominatim for administrative boundaries, returns simplified GeoJSON with area calculations
 
 ### MCP Resources

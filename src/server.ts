@@ -10,8 +10,8 @@ import { createMapflowClient } from "./mapflow-client.js";
 import { createNominatimClient } from "./nominatim-client.js";
 import {
 	geoJsonGeometrySchema,
+	mapflowDataProviderParamsSchema,
 	mapflowProcessingBlockSchema,
-	mapflowProcessingSchema,
 } from "./schemas.js";
 
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
@@ -34,14 +34,17 @@ server.registerTool(
 			geometry: geoJsonGeometrySchema.describe(
 				"GeoJSON geometry for the area of interest.",
 			),
-			params: z
-				.record(z.string(), z.unknown())
-				.default({})
+			dataProvider: mapflowDataProviderParamsSchema
 				.optional()
-				.describe("Optional processing params."),
+				.describe(
+					"Data provider configuration. Use name from mapflow://imagery-sources.",
+				),
+			inferenceParams: z
+				.record(z.string(), z.unknown())
+				.optional()
+				.describe("Optional model inference parameters."),
 			meta: z
 				.record(z.string(), z.unknown())
-				.default({})
 				.optional()
 				.describe("Optional metadata to store with the processing."),
 			blocks: z
@@ -52,25 +55,24 @@ server.registerTool(
 				),
 		},
 	},
-	async ({ name, wdName, geometry, params, meta, blocks }) => {
-		const parsed = await mapflowClient.requestJson(
-			"/rest/processings",
-			mapflowProcessingSchema,
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					name,
-					wdName,
-					geometry,
-					params: params ?? {},
-					meta: meta ?? {},
-					blocks,
-				}),
-			},
-		);
+	async ({
+		name,
+		wdName,
+		geometry,
+		dataProvider,
+		inferenceParams,
+		meta,
+		blocks,
+	}) => {
+		const parsed = await mapflowClient.createProcessing({
+			name,
+			wdName,
+			geometry,
+			dataProvider,
+			inferenceParams,
+			meta,
+			blocks,
+		});
 
 		return {
 			content: [
@@ -80,6 +82,7 @@ server.registerTool(
 						{
 							id: parsed.id,
 							status: parsed.status,
+							cost: parsed.cost,
 							vectorLayer: parsed.vectorLayer,
 							rasterLayer: parsed.rasterLayer,
 							resultRasterLayer: parsed.resultRasterLayer,
@@ -90,6 +93,95 @@ server.registerTool(
 				},
 			],
 			structuredContent: parsed,
+		};
+	},
+);
+
+server.registerTool(
+	"get-processing",
+	{
+		title: "Get Mapflow processing",
+		description: "Get status and results of a Mapflow processing task by ID.",
+		inputSchema: {
+			processingId: z.uuid().describe("Processing ID to check."),
+		},
+	},
+	async ({ processingId }) => {
+		const parsed = await mapflowClient.getProcessing(processingId);
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify(
+						{
+							id: parsed.id,
+							name: parsed.name,
+							status: parsed.status,
+							percentCompleted: parsed.percentCompleted,
+							cost: parsed.cost,
+							vectorLayer: parsed.vectorLayer,
+							rasterLayer: parsed.rasterLayer,
+							resultRasterLayer: parsed.resultRasterLayer,
+							messages: parsed.messages,
+						},
+						null,
+						2,
+					),
+				},
+			],
+			structuredContent: parsed,
+		};
+	},
+);
+
+server.registerTool(
+	"calculate-cost",
+	{
+		title: "Calculate processing cost",
+		description: "Estimate cost in credits before starting a processing.",
+		inputSchema: {
+			wdName: z
+				.string()
+				.min(1)
+				.describe(
+					"Workflow display name (e.g., 🏠 Buildings) from mapflow://models.",
+				),
+			geometry: geoJsonGeometrySchema
+				.optional()
+				.describe("GeoJSON geometry for the area of interest."),
+			areaSqKm: z
+				.number()
+				.optional()
+				.describe("Area in square kilometers (alternative to geometry)."),
+			dataProvider: mapflowDataProviderParamsSchema
+				.optional()
+				.describe(
+					"Data provider configuration. Use name from mapflow://imagery-sources.",
+				),
+			blocks: z
+				.array(mapflowProcessingBlockSchema)
+				.optional()
+				.describe("Optional postprocessing blocks configuration."),
+		},
+	},
+	async ({ wdName, geometry, areaSqKm, dataProvider, blocks }) => {
+		const cost = await mapflowClient.calculateCost({
+			wdName,
+			geometry,
+			areaSqKm,
+			dataProvider,
+			blocks,
+		});
+
+		return {
+			content: [
+				{
+					type: "text",
+					text: `Estimated cost: ${cost} credits`,
+				},
+			],
+			structuredContent: { cost },
 		};
 	},
 );
