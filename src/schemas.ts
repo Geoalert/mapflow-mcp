@@ -98,7 +98,7 @@ export const mapflowProcessingBlockSchema = z
 	})
 	.catchall(z.unknown());
 
-// V2 API schemas
+// V2 API schemas - input schema for requests
 export const mapflowDataProviderParamsSchema = z
 	.object({
 		name: z.string(),
@@ -106,19 +106,29 @@ export const mapflowDataProviderParamsSchema = z
 	})
 	.catchall(z.unknown());
 
+// Response schema for dataProvider (API returns providerName, not name)
+export const mapflowDataProviderResponseSchema = z
+	.object({
+		providerName: z.string().optional(),
+		name: z.string().optional(),
+		zoom: z.number().optional(),
+	})
+	.catchall(z.unknown());
+
 export const mapflowSourceParamsSchema = z
 	.object({
-		dataProvider: mapflowDataProviderParamsSchema.optional(),
+		dataProvider: mapflowDataProviderResponseSchema.optional(),
 	})
 	.catchall(z.unknown());
 
 export const mapflowInferenceParamsSchema = z
 	.record(z.string(), z.unknown())
+	.nullable()
 	.optional();
 
 export const mapflowProcessingParamsSchema = z
 	.object({
-		sourceParams: mapflowSourceParamsSchema.optional(),
+		sourceParams: mapflowSourceParamsSchema.nullable().optional(),
 		inferenceParams: mapflowInferenceParamsSchema,
 	})
 	.catchall(z.unknown());
@@ -201,7 +211,7 @@ export const createProcessingRequestSchema = z.object({
 	name: z.string().min(1),
 	wdName: z.string().min(1),
 	geometry: geoJsonGeometrySchema,
-	dataProvider: mapflowDataProviderParamsSchema.optional(),
+	dataProvider: mapflowDataProviderParamsSchema,
 	inferenceParams: z.record(z.string(), z.unknown()).optional(),
 	blocks: z.array(mapflowProcessingBlockSchema).optional(),
 	meta: z.record(z.string(), z.unknown()).optional(),

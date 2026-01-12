@@ -232,6 +232,7 @@ describe("createProcessing", () => {
 			name: "Test",
 			wdName: "🏠 Buildings",
 			geometry: mockGeometry,
+			dataProvider: { name: "Mapbox", zoom: 18 },
 		});
 
 		expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -254,7 +255,7 @@ describe("createProcessing", () => {
 		const body = JSON.parse(init.body as string);
 
 		expect(body.params.sourceParams.dataProvider).toEqual({
-			name: "Mapbox",
+			providerName: "Mapbox",
 			zoom: 18,
 		});
 		expect(body.params.inferenceParams).toEqual({ threshold: 0.5 });
@@ -266,6 +267,7 @@ describe("createProcessing", () => {
 			name: "Test",
 			wdName: "🏠 Buildings",
 			geometry: mockGeometry,
+			dataProvider: { name: "Mapbox", zoom: 18 },
 		});
 
 		expect(result.id).toBe(mockProcessing.id);

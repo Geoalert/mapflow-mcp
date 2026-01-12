@@ -34,11 +34,9 @@ server.registerTool(
 			geometry: geoJsonGeometrySchema.describe(
 				"GeoJSON geometry for the area of interest.",
 			),
-			dataProvider: mapflowDataProviderParamsSchema
-				.optional()
-				.describe(
-					"Data provider configuration. Use name from mapflow://imagery-sources.",
-				),
+			dataProvider: mapflowDataProviderParamsSchema.describe(
+				"Data provider configuration. Use name from mapflow://imagery-sources.",
+			),
 			inferenceParams: z
 				.record(z.string(), z.unknown())
 				.optional()

@@ -74,3 +74,4 @@ Requires `MAPFLOW_TOKEN` environment variable for Mapflow API authentication.
 - Biome for linting/formatting (tab indentation, double quotes)
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 - Use `.js` extension in imports (e.g., `./schemas.js`)
+- **ALWAYS run `bun validate` after writing or editing code** to ensure type safety and formatting

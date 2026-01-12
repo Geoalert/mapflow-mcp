@@ -150,15 +150,24 @@ export function createMapflowClient(): MapflowClient {
 	const createProcessing = async (
 		req: CreateProcessingRequest,
 	): Promise<Processing> => {
+		const sourceParams = {
+			dataProvider: {
+				providerName: req.dataProvider.name,
+				...(req.dataProvider.zoom !== undefined && {
+					zoom: req.dataProvider.zoom,
+				}),
+			},
+		};
+
 		const body = {
 			name: req.name,
 			wdName: req.wdName,
 			geometry: req.geometry,
 			params: {
-				sourceParams: req.dataProvider
-					? { dataProvider: req.dataProvider }
-					: undefined,
-				inferenceParams: req.inferenceParams,
+				sourceParams,
+				...(req.inferenceParams && {
+					inferenceParams: req.inferenceParams,
+				}),
 			},
 			blocks: req.blocks,
 			meta: req.meta,
@@ -176,15 +185,29 @@ export function createMapflowClient(): MapflowClient {
 	};
 
 	const calculateCost = async (req: CalculateCostRequest): Promise<number> => {
+		// Get model ID by name
+		const status = await getCachedUserStatus();
+		const model = (status.models ?? []).find((m) => m.name === req.wdName);
+		if (!model?.id) {
+			throw new Error(`Model not found: ${req.wdName}`);
+		}
+
+		const sourceParams = req.dataProvider
+			? {
+					dataProvider: {
+						providerName: req.dataProvider.name,
+						...(req.dataProvider.zoom !== undefined && {
+							zoom: req.dataProvider.zoom,
+						}),
+					},
+				}
+			: undefined;
+
 		const body = {
-			wdName: req.wdName,
+			wdId: model.id,
 			geometry: req.geometry,
 			areaSqKm: req.areaSqKm,
-			params: {
-				sourceParams: req.dataProvider
-					? { dataProvider: req.dataProvider }
-					: undefined,
-			},
+			...(sourceParams && { params: { sourceParams } }),
 			blocks: req.blocks,
 		};
 
