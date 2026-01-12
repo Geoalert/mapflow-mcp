@@ -136,6 +136,7 @@ export function createMapflowClient(): MapflowClient {
 		return {
 			processedArea: status.processedArea,
 			remainingArea: status.remainingArea,
+			remainingCredits: status.remainingCredits,
 			areaLimit: status.areaLimit,
 			memoryLimit: status.memoryLimit,
 		};

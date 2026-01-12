@@ -84,6 +84,7 @@ export const mapflowUserLimitsSchema = z
 	.object({
 		processedArea: z.number().optional(),
 		remainingArea: z.number().optional(),
+		remainingCredits: z.number().optional(),
 		areaLimit: z.number().optional(),
 		memoryLimit: z.number().optional(),
 	})
