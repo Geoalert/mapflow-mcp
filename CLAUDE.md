@@ -69,6 +69,36 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 
 Requires `MAPFLOW_TOKEN` environment variable for Mapflow API authentication.
 
+## Docker
+
+The image is automatically built and published to GitHub Container Registry on push to main.
+
+**Use the published image:**
+```bash
+docker run -i --rm -e MAPFLOW_TOKEN=your_token ghcr.io/geoalert/mapflow-mcp:latest
+```
+
+**Or build locally:**
+```bash
+docker build -t mapflow-mcp .
+docker run -i --rm -e MAPFLOW_TOKEN=your_token mapflow-mcp
+```
+
+**MCP client configuration (e.g., Claude Desktop):**
+```json
+{
+  "mcpServers": {
+    "mapflow": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "ghcr.io/geoalert/mapflow-mcp:latest"],
+      "env": {
+        "MAPFLOW_TOKEN": "your_token"
+      }
+    }
+  }
+}
+```
+
 ## Code Style
 
 - Biome for linting/formatting (tab indentation, double quotes)

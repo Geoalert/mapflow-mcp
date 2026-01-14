@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation
+*.md
+LICENSE
+
+# Test and coverage
+coverage/
+__tests__/
+*.test.ts
+
+# Build artifacts
+dist/
+out/
+
+# MCP config
+.mcp.json
+
+# Misc
+.DS_Store
