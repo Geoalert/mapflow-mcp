@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import area from "@turf/area";
 import simplify from "@turf/simplify";
 import * as z from "zod";
-import { createMapflowClient } from "./mapflow-client.js";
+import { createMapflowClient, type MapflowClient } from "./mapflow-client.js";
 import { createNominatimClient } from "./nominatim-client.js";
 import {
 	geoJsonGeometrySchema,
@@ -14,6 +14,17 @@ import {
 const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
 const mapflowClient = createMapflowClient();
 const nominatimClient = createNominatimClient();
+
+/**
+ * Feature flag to control resource vs tool registration.
+ * When MAPFLOW_USE_RESOURCES is set to "true" or "1", metadata is exposed as resources.
+ * Otherwise (default), metadata is exposed as tools.
+ */
+export function shouldUseResources(): boolean {
+	const value =
+		Bun.env?.MAPFLOW_USE_RESOURCES ?? process.env.MAPFLOW_USE_RESOURCES;
+	return value === "true" || value === "1";
+}
 
 server.registerTool(
 	"start-processing",
@@ -271,74 +282,188 @@ server.registerTool(
 	},
 );
 
-server.registerResource(
-	"models",
-	"mapflow://models",
-	{
-		title: "Mapflow user models",
-		description: "Available Mapflow models",
-		mimeType: "application/json",
-	},
-	async (uri) => {
-		const models = await mapflowClient.getModels();
+// Resource registration functions (used when MAPFLOW_USE_RESOURCES=true)
+function registerModelsResource(
+	server: McpServer,
+	client: MapflowClient,
+): void {
+	server.registerResource(
+		"models",
+		"mapflow://models",
+		{
+			title: "Mapflow user models",
+			description: "Available Mapflow models",
+			mimeType: "application/json",
+		},
+		async (uri) => {
+			const models = await client.getModels();
+			return {
+				contents: [
+					{
+						uri: uri.href,
+						mimeType: "application/json",
+						text: JSON.stringify(models, null, 2),
+					},
+				],
+			};
+		},
+	);
+}
 
-		return {
-			contents: [
-				{
-					uri: uri.href,
-					mimeType: "application/json",
-					text: JSON.stringify(models, null, 2),
-				},
-			],
-		};
-	},
-);
+function registerLimitsResource(
+	server: McpServer,
+	client: MapflowClient,
+): void {
+	server.registerResource(
+		"limits",
+		"mapflow://limits",
+		{
+			title: "Mapflow user limits",
+			description: "Current Mapflow usage limits",
+			mimeType: "application/json",
+		},
+		async (uri) => {
+			const limits = await client.getLimits();
+			return {
+				contents: [
+					{
+						uri: uri.href,
+						mimeType: "application/json",
+						text: JSON.stringify(limits, null, 2),
+					},
+				],
+			};
+		},
+	);
+}
 
-server.registerResource(
-	"limits",
-	"mapflow://limits",
-	{
-		title: "Mapflow user limits",
-		description: "Current Mapflow usage limits",
-		mimeType: "application/json",
-	},
-	async (uri) => {
-		const limits = await mapflowClient.getLimits();
+function registerImagerySourcesResource(
+	server: McpServer,
+	client: MapflowClient,
+): void {
+	server.registerResource(
+		"imagery-sources",
+		"mapflow://imagery-sources",
+		{
+			title: "Mapflow imagery sources",
+			description: "Available imagery sources for processing",
+			mimeType: "application/json",
+		},
+		async (uri) => {
+			const sources = await client.getImagerySources();
+			return {
+				contents: [
+					{
+						uri: uri.href,
+						mimeType: "application/json",
+						text: JSON.stringify(sources, null, 2),
+					},
+				],
+			};
+		},
+	);
+}
 
-		return {
-			contents: [
-				{
-					uri: uri.href,
-					mimeType: "application/json",
-					text: JSON.stringify(limits, null, 2),
-				},
-			],
-		};
-	},
-);
+// Tool registration functions (used by default)
+function registerModelsAsTool(server: McpServer, client: MapflowClient): void {
+	server.registerTool(
+		"list-models",
+		{
+			title: "List Mapflow models",
+			description:
+				"List available Mapflow AI models for processing satellite imagery.",
+			annotations: {
+				readOnlyHint: true,
+				destructiveHint: false,
+				idempotentHint: true,
+				openWorldHint: true,
+			},
+		},
+		async () => {
+			const models = await client.getModels();
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(models, null, 2),
+					},
+				],
+				structuredContent: { models },
+			};
+		},
+	);
+}
 
-server.registerResource(
-	"imagery-sources",
-	"mapflow://imagery-sources",
-	{
-		title: "Mapflow imagery sources",
-		description: "Available imagery sources for processing",
-		mimeType: "application/json",
-	},
-	async (uri) => {
-		const sources = await mapflowClient.getImagerySources();
+function registerLimitsAsTool(server: McpServer, client: MapflowClient): void {
+	server.registerTool(
+		"get-limits",
+		{
+			title: "Get Mapflow limits",
+			description: "Get current Mapflow usage limits and remaining credits.",
+			annotations: {
+				readOnlyHint: true,
+				destructiveHint: false,
+				idempotentHint: true,
+				openWorldHint: true,
+			},
+		},
+		async () => {
+			const limits = await client.getLimits();
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(limits, null, 2),
+					},
+				],
+				structuredContent: limits,
+			};
+		},
+	);
+}
 
-		return {
-			contents: [
-				{
-					uri: uri.href,
-					mimeType: "application/json",
-					text: JSON.stringify(sources, null, 2),
-				},
-			],
-		};
-	},
-);
+function registerImagerySourcesAsTool(
+	server: McpServer,
+	client: MapflowClient,
+): void {
+	server.registerTool(
+		"list-imagery-sources",
+		{
+			title: "List Mapflow imagery sources",
+			description:
+				"List available imagery sources (data providers) for Mapflow processing.",
+			annotations: {
+				readOnlyHint: true,
+				destructiveHint: false,
+				idempotentHint: true,
+				openWorldHint: true,
+			},
+		},
+		async () => {
+			const sources = await client.getImagerySources();
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(sources, null, 2),
+					},
+				],
+				structuredContent: { imagerySources: sources },
+			};
+		},
+	);
+}
+
+// Register resources or tools based on feature flag
+if (shouldUseResources()) {
+	registerModelsResource(server, mapflowClient);
+	registerLimitsResource(server, mapflowClient);
+	registerImagerySourcesResource(server, mapflowClient);
+} else {
+	registerModelsAsTool(server, mapflowClient);
+	registerLimitsAsTool(server, mapflowClient);
+	registerImagerySourcesAsTool(server, mapflowClient);
+}
 
 const transport = new StdioServerTransport();
 

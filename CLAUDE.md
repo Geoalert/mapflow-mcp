@@ -32,10 +32,15 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 - `calculate-cost` - Estimates cost in credits before starting a processing
 - `get-geoboundary` - Searches OSM Nominatim for administrative boundaries, returns simplified GeoJSON with area calculations
 
-### MCP Resources
+**Default mode (tools for metadata):**
+
+- `list-models` - Lists available Mapflow AI models
+- `get-limits` - Gets user processing limits
+- `list-imagery-sources` - Lists available imagery sources for processing
+
+### MCP Resources (when `MAPFLOW_USE_RESOURCES=true`)
 
 - `mapflow://models` - Lists available Mapflow AI models
-- `mapflow://models/{modelName}/blocks` - Postprocessing blocks for a specific model
 - `mapflow://limits` - User processing limits
 - `mapflow://imagery-sources` - Available imagery sources for processing
 
@@ -53,7 +58,8 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 
 ## Configuration
 
-Requires `MAPFLOW_TOKEN` environment variable for Mapflow API authentication.
+- `MAPFLOW_TOKEN` (required) - Mapflow API authentication token
+- `MAPFLOW_USE_RESOURCES` (optional) - Set to `true` or `1` to expose metadata as MCP resources instead of tools. Default: tools mode.
 
 ## Docker
 
