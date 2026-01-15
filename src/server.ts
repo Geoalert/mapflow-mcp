@@ -23,6 +23,12 @@ server.registerTool(
 	{
 		title: "Start Mapflow processing",
 		description: "Create a new Mapflow processing task with a GeoJSON AOI.",
+		annotations: {
+			readOnlyHint: false,
+			destructiveHint: true,
+			idempotentHint: false,
+			openWorldHint: true,
+		},
 		inputSchema: {
 			name: z.string().min(1).describe("Processing name to show in Mapflow."),
 			wdName: z
@@ -100,6 +106,9 @@ server.registerTool(
 	{
 		title: "Get Mapflow processing",
 		description: "Get status and results of a Mapflow processing task by ID.",
+		annotations: {
+			readOnlyHint: true,
+		},
 		inputSchema: {
 			processingId: z.uuid().describe("Processing ID to check."),
 		},
@@ -138,6 +147,9 @@ server.registerTool(
 	{
 		title: "Calculate processing cost",
 		description: "Estimate cost in credits before starting a processing.",
+		annotations: {
+			readOnlyHint: true,
+		},
 		inputSchema: {
 			wdName: z
 				.string()
@@ -190,6 +202,10 @@ server.registerTool(
 		title: "Get Geoboundary",
 		description:
 			"Search for administrative boundaries by place name using OpenStreetMap Nominatim. Returns a GeoJSON polygon.",
+		annotations: {
+			readOnlyHint: true,
+			openWorldHint: true,
+		},
 		inputSchema: {
 			query: z
 				.string()

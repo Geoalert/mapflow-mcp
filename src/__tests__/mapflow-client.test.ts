@@ -326,16 +326,36 @@ describe("calculateCost", () => {
 	let mockFetch: ReturnType<typeof mock>;
 	const originalEnv = { ...process.env };
 
+	const mockUserStatusWithModels = {
+		...mockUserStatus,
+		models: [
+			{
+				id: "550e8400-e29b-41d4-a716-446655440000",
+				name: "🏠 Buildings",
+				blocks: [],
+			},
+		],
+	};
+
 	beforeEach(() => {
 		originalFetch = globalThis.fetch;
-		mockFetch = mock(() =>
-			Promise.resolve(
+		mockFetch = mock((url: URL) => {
+			const urlStr = url.toString();
+			if (urlStr.includes("/rest/user/status")) {
+				return Promise.resolve(
+					new Response(JSON.stringify(mockUserStatusWithModels), {
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					}),
+				);
+			}
+			return Promise.resolve(
 				new Response("15.5", {
 					status: 200,
 					headers: { "Content-Type": "text/plain" },
 				}),
-			),
-		);
+			);
+		});
 		globalThis.fetch = mockFetch as unknown as typeof fetch;
 		process.env.MAPFLOW_TOKEN = "test-token";
 	});
@@ -352,8 +372,9 @@ describe("calculateCost", () => {
 			geometry: mockGeometry,
 		});
 
-		expect(mockFetch).toHaveBeenCalledTimes(1);
-		const [url, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		// First call is getCachedUserStatus, second is the cost calculation
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		const [url, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
 		expect(url.toString()).toBe(
 			"https://api.mapflow.ai/rest/processing/cost/v2",
 		);
@@ -367,7 +388,8 @@ describe("calculateCost", () => {
 			areaSqKm: 10,
 		});
 
-		const [, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		// Second call is the cost calculation (first is getCachedUserStatus)
+		const [, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
 		const body = JSON.parse(init.body as string);
 
 		expect(body.areaSqKm).toBe(10);
