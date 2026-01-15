@@ -1,7 +1,4 @@
-import {
-	McpServer,
-	ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import area from "@turf/area";
 import simplify from "@turf/simplify";
@@ -55,7 +52,7 @@ server.registerTool(
 				.array(mapflowProcessingBlockSchema)
 				.optional()
 				.describe(
-					"Optional postprocessing blocks configuration. Use blocks from mapflow://models/{modelId}/blocks.",
+					"Optional postprocessing blocks configuration. Use blocks from mapflow://models.",
 				),
 		},
 	},
@@ -291,60 +288,6 @@ server.registerResource(
 					uri: uri.href,
 					mimeType: "application/json",
 					text: JSON.stringify(models, null, 2),
-				},
-			],
-		};
-	},
-);
-
-server.registerResource(
-	"model-blocks",
-	new ResourceTemplate("mapflow://models/{modelName}/blocks", {
-		list: async () => {
-			try {
-				const models = await mapflowClient.getModels();
-				return {
-					resources: models
-						.filter((model) => {
-							return typeof model.name === "string" && model.name.length > 0;
-						})
-						.map((model) => {
-							const modelName = model.name ?? "";
-							return {
-								uri: `mapflow://models/${encodeURIComponent(modelName)}/blocks`,
-								name: modelName,
-							};
-						}),
-				};
-			} catch (error) {
-				console.error("Error fetching models:", error);
-				return { resources: [] };
-			}
-		},
-	}),
-	{
-		title: "Mapflow model blocks",
-		description: "Postprocessing blocks for a specific Mapflow model",
-		mimeType: "application/json",
-	},
-	async (uri, { modelName }) => {
-		const rawName = Array.isArray(modelName) ? modelName[0] : modelName;
-		const name = rawName ? decodeURIComponent(rawName) : undefined;
-		if (!name) {
-			throw new Error("Model name is required");
-		}
-
-		const blocks = await mapflowClient.getModelBlocks(name);
-		if (!blocks) {
-			throw new Error(`Model not found for name: ${name}`);
-		}
-
-		return {
-			contents: [
-				{
-					uri: uri.href,
-					mimeType: "application/json",
-					text: JSON.stringify(blocks, null, 2),
 				},
 			],
 		};

@@ -1,9 +1,9 @@
 # TODOs
 
-[x] Добавить аннотации для тулов
+[x] Add annotations for the tools
 
-[ ] Http транспорт, не забыть про rateLimit в Nominatim, можно решить через p-limit / p-queue
+[x] Remove separation of models and blocks
 
-[ ] Конвертировать ресурсы в тулы (как вариант управлять этим через feature flag)
+[ ] Convert resources to tools (as an alternative, manage this via a feature flag)
 
-[ ] Убрать разделение моделей и блоков
+[ ] Http transport, don't forget about rateLimit in Nominatim, can be solved via p-limit / p-queue

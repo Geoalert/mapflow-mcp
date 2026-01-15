@@ -74,10 +74,6 @@ export const mapflowUserProfileSchema = z
 
 export const mapflowUserModelsSchema = z.array(mapflowModelSchema);
 
-export const mapflowModelWithoutBlocksSchema = mapflowModelSchema.omit({
-	blocks: true,
-});
-
 export const mapflowUserTeamsSchema = z.array(mapflowTeamSchema);
 
 export const mapflowUserLimitsSchema = z

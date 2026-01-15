@@ -3,8 +3,7 @@ import {
 	type CalculateCostRequest,
 	type CreateProcessingRequest,
 	type mapflowDataProviderSchema,
-	type mapflowModelBlockSchema,
-	type mapflowModelWithoutBlocksSchema,
+	type mapflowModelSchema,
 	mapflowProcessingSchema,
 	type mapflowUserLimitsSchema,
 	mapflowUserStatusSchema,
@@ -19,10 +18,7 @@ const userStatusCacheTtlMs = 300_000;
 
 export type UserStatus = z.infer<typeof mapflowUserStatusSchema>;
 export type UserLimits = z.infer<typeof mapflowUserLimitsSchema>;
-export type ModelWithoutBlocks = z.infer<
-	typeof mapflowModelWithoutBlocksSchema
->;
-export type ModelBlock = z.infer<typeof mapflowModelBlockSchema>;
+export type Model = z.infer<typeof mapflowModelSchema>;
 export type DataProvider = z.infer<typeof mapflowDataProviderSchema>;
 
 export type MapflowClient = {
@@ -34,8 +30,7 @@ export type MapflowClient = {
 	) => Promise<T>;
 	fetchUserStatus: () => Promise<UserStatus>;
 	getCachedUserStatus: () => Promise<UserStatus>;
-	getModels: () => Promise<ModelWithoutBlocks[]>;
-	getModelBlocks: (modelName: string) => Promise<ModelBlock[] | null>;
+	getModels: () => Promise<Model[]>;
 	getLimits: () => Promise<UserLimits>;
 	getImagerySources: () => Promise<DataProvider[]>;
 	// V2 API methods
@@ -115,20 +110,9 @@ export function createMapflowClient(): MapflowClient {
 		return fresh;
 	};
 
-	const getModels = async (): Promise<ModelWithoutBlocks[]> => {
+	const getModels = async (): Promise<Model[]> => {
 		const status = await getCachedUserStatus();
-		return (status.models ?? []).map((model) => {
-			const { blocks: _, ...modelWithoutBlocks } = model;
-			return modelWithoutBlocks;
-		});
-	};
-
-	const getModelBlocks = async (
-		modelName: string,
-	): Promise<ModelBlock[] | null> => {
-		const status = await getCachedUserStatus();
-		const model = (status.models ?? []).find((m) => m.name === modelName);
-		return model?.blocks ?? null;
+		return status.models ?? [];
 	};
 
 	const getLimits = async (): Promise<UserLimits> => {
@@ -228,7 +212,6 @@ export function createMapflowClient(): MapflowClient {
 		fetchUserStatus,
 		getCachedUserStatus,
 		getModels,
-		getModelBlocks,
 		getLimits,
 		getImagerySources,
 		createProcessing,
