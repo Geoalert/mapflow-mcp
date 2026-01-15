@@ -2,27 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build & Development Commands
-
-```bash
-bun install          # Install dependencies
-bun run dev          # Run server with hot reload (--watch --hot)
-bun run lint:ts      # TypeScript type checking (bunx tsc --noEmit)
-bun run lint         # Biome linting with auto-fix
-bun run format       # Biome formatting
-bun run validate     # Run all checks: lint:ts && lint && format
-bun test             # Run all tests
-bun test --watch     # Run tests in watch mode
-bun test <pattern>   # Run specific test file (e.g., bun test mapflow)
-```
-
 Run the server directly: `bun run src/server.ts`
 
 ## Runtime Environment
 
 **Use Bun instead of Node.js, npm, or pnpm:**
+
 - `bun <file>` instead of `node` or `ts-node`
-- `bun test` instead of jest/vitest
 - `bun install` instead of npm/yarn/pnpm install
 - Bun automatically loads `.env` files (no dotenv needed)
 - Prefer `Bun.file` over `node:fs` readFile/writeFile
@@ -74,23 +60,33 @@ Requires `MAPFLOW_TOKEN` environment variable for Mapflow API authentication.
 The image is automatically built and published to GitHub Container Registry on push to main.
 
 **Use the published image:**
+
 ```bash
 docker run -i --rm -e MAPFLOW_TOKEN=your_token ghcr.io/geoalert/mapflow-mcp:latest
 ```
 
 **Or build locally:**
+
 ```bash
 docker build -t mapflow-mcp .
 docker run -i --rm -e MAPFLOW_TOKEN=your_token mapflow-mcp
 ```
 
 **MCP client configuration (e.g., Claude Desktop):**
+
 ```json
 {
   "mcpServers": {
     "mapflow": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "ghcr.io/geoalert/mapflow-mcp:latest"],
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "MAPFLOW_TOKEN",
+        "ghcr.io/geoalert/mapflow-mcp:latest"
+      ],
       "env": {
         "MAPFLOW_TOKEN": "your_token"
       }
@@ -104,4 +100,4 @@ docker run -i --rm -e MAPFLOW_TOKEN=your_token mapflow-mcp
 - Biome for linting/formatting (tab indentation, double quotes)
 - TypeScript strict mode with `noUncheckedIndexedAccess`
 - Use `.js` extension in imports (e.g., `./schemas.js`)
-- **ALWAYS run `bun validate` after writing or editing code** to ensure type safety and formatting
+- **Always use the `tester` agent** for running tests, linting, and formatting, or to validate codebase after changes.
