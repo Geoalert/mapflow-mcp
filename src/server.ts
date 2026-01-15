@@ -43,13 +43,13 @@ server.registerTool(
 				.string()
 				.min(1)
 				.describe(
-					"Workflow display name (e.g., 🏠 Buildings) from mapflow://models.",
+					"Workflow display name (e.g., 🏠 Buildings) from available models.",
 				),
 			geometry: geoJsonGeometrySchema.describe(
 				"GeoJSON geometry for the area of interest.",
 			),
 			dataProvider: mapflowDataProviderParamsSchema.describe(
-				"Data provider configuration. Use name from mapflow://imagery-sources.",
+				"Data provider configuration. Use name from available imagery sources.",
 			),
 			inferenceParams: z
 				.record(z.string(), z.unknown())
@@ -63,7 +63,7 @@ server.registerTool(
 				.array(mapflowProcessingBlockSchema)
 				.optional()
 				.describe(
-					"Optional postprocessing blocks configuration. Use blocks from mapflow://models.",
+					"Optional postprocessing blocks configuration. Use blocks from selected model.",
 				),
 		},
 	},
@@ -163,7 +163,7 @@ server.registerTool(
 				.string()
 				.min(1)
 				.describe(
-					"Workflow display name (e.g., 🏠 Buildings) from mapflow://models.",
+					"Workflow display name (e.g., 🏠 Buildings) from available models.",
 				),
 			geometry: geoJsonGeometrySchema
 				.optional()
@@ -175,7 +175,7 @@ server.registerTool(
 			dataProvider: mapflowDataProviderParamsSchema
 				.optional()
 				.describe(
-					"Data provider configuration. Use name from mapflow://imagery-sources.",
+					"Data provider configuration. Use name from available imagery sources.",
 				),
 			blocks: z
 				.array(mapflowProcessingBlockSchema)
