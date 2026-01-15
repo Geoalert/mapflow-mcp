@@ -1,6 +1,6 @@
 ---
-name: code-checker
-description: Agent for linting, formatting, and testing the codebase.
+name: tester
+description: Agent for testing, formatting, and linting the codebase.
 tools: Read, Glog, Grep, Bash(bun run validate), Bash(bun test), Bash(bun run lint), Bash(bun run format), Bash(bun run lint:ts)
 model: sonnet
 color: green
