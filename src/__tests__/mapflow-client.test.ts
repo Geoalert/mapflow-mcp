@@ -50,6 +50,7 @@ describe("request authentication", () => {
 		);
 		globalThis.fetch = mockFetch as unknown as typeof fetch;
 		process.env.MAPFLOW_TOKEN = "my-secret-token";
+		process.env.MAPFLOW_BASE_URL = "https://api.mapflow.ai";
 	});
 
 	afterEach(() => {
@@ -219,6 +220,7 @@ describe("createProcessing", () => {
 		);
 		globalThis.fetch = mockFetch as unknown as typeof fetch;
 		process.env.MAPFLOW_TOKEN = "test-token";
+		process.env.MAPFLOW_BASE_URL = "https://api.mapflow.ai";
 	});
 
 	afterEach(() => {
@@ -292,6 +294,7 @@ describe("getProcessing", () => {
 		);
 		globalThis.fetch = mockFetch as unknown as typeof fetch;
 		process.env.MAPFLOW_TOKEN = "test-token";
+		process.env.MAPFLOW_BASE_URL = "https://api.mapflow.ai";
 	});
 
 	afterEach(() => {
@@ -358,6 +361,7 @@ describe("calculateCost", () => {
 		});
 		globalThis.fetch = mockFetch as unknown as typeof fetch;
 		process.env.MAPFLOW_TOKEN = "test-token";
+		process.env.MAPFLOW_BASE_URL = "https://api.mapflow.ai";
 	});
 
 	afterEach(() => {

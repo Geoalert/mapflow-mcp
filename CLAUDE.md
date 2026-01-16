@@ -59,6 +59,7 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 ## Configuration
 
 - `MAPFLOW_TOKEN` (required) - Mapflow API authentication token
+- `MAPFLOW_BASE_URL` (optional) - Base URL for Mapflow API. Default: `https://whitemaps-staging.mapflow.ai`
 - `MAPFLOW_USE_RESOURCES` (optional) - Set to `true` or `1` to expose metadata as MCP resources instead of tools. Default: tools mode.
 
 ## Docker

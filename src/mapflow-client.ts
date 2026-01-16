@@ -13,7 +13,13 @@ export type { CreateProcessingRequest, CalculateCostRequest };
 
 export type Processing = z.infer<typeof mapflowProcessingSchema>;
 
-const baseUrl = "https://api.mapflow.ai";
+function getMapflowBaseUrl(): string {
+	return (
+		Bun.env?.MAPFLOW_BASE_URL ??
+		process.env.MAPFLOW_BASE_URL ??
+		"https://whitemaps-staging.mapflow.ai"
+	);
+}
 const userStatusCacheTtlMs = 300_000;
 
 export type UserStatus = z.infer<typeof mapflowUserStatusSchema>;
@@ -62,7 +68,7 @@ export function createMapflowClient(): MapflowClient {
 	};
 
 	const request = async (path: string, init?: RequestInit) => {
-		const url = new URL(path, baseUrl);
+		const url = new URL(path, getMapflowBaseUrl());
 		const headers = withAuthHeaders(init);
 
 		const response = await fetch(url, {
