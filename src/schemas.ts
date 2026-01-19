@@ -99,7 +99,7 @@ export const mapflowProcessingBlockSchema = z
 export const mapflowDataProviderParamsSchema = z
 	.object({
 		name: z.string(),
-		zoom: z.number().optional(),
+		zoom: z.number(),
 	})
 	.catchall(z.unknown());
 

@@ -144,9 +144,7 @@ export function createMapflowClient(): MapflowClient {
 		const sourceParams = {
 			dataProvider: {
 				providerName: req.dataProvider.name,
-				...(req.dataProvider.zoom !== undefined && {
-					zoom: req.dataProvider.zoom,
-				}),
+				zoom: req.dataProvider.zoom,
 			},
 		};
 
@@ -187,9 +185,7 @@ export function createMapflowClient(): MapflowClient {
 			? {
 					dataProvider: {
 						providerName: req.dataProvider.name,
-						...(req.dataProvider.zoom !== undefined && {
-							zoom: req.dataProvider.zoom,
-						}),
+						zoom: req.dataProvider.zoom,
 					},
 				}
 			: undefined;
