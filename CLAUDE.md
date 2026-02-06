@@ -15,11 +15,11 @@ Run the server directly: `bun run src/server.ts`
 
 ## Architecture
 
-This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI platform. It runs over stdio transport using `@modelcontextprotocol/sdk`.
+This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI platform. It supports stdio and streamable HTTP transports using `@modelcontextprotocol/sdk`.
 
 ### Source Structure
 
-- `src/server.ts` - MCP server entry point; registers tools and resources
+- `src/server.ts` - MCP server entry point; registers tools and starts the selected transport
 - `src/mapflow-client.ts` - Mapflow API client with in-memory caching (5-minute TTL for user status)
 - `src/nominatim-client.ts` - OpenStreetMap Nominatim client with rate limiting (1 req/sec)
 - `src/schemas.ts` - Zod schemas for API validation (Mapflow models, processings, Nominatim results)
@@ -31,18 +31,9 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 - `get-processing` - Gets status and results of a processing task by ID
 - `calculate-cost` - Estimates cost in credits before starting a processing
 - `get-geoboundary` - Searches OSM Nominatim for administrative boundaries, returns simplified GeoJSON with area calculations
-
-**Default mode (tools for metadata):**
-
 - `list-models` - Lists available Mapflow AI models
 - `get-limits` - Gets user processing limits
 - `list-imagery-sources` - Lists available imagery sources for processing
-
-### MCP Resources (when `MAPFLOW_USE_RESOURCES=true`)
-
-- `mapflow://models` - Lists available Mapflow AI models
-- `mapflow://limits` - User processing limits
-- `mapflow://imagery-sources` - Available imagery sources for processing
 
 ### Key Patterns
 
@@ -60,16 +51,23 @@ This is a **Model Context Protocol (MCP) server** for the Mapflow geospatial AI 
 
 - `MAPFLOW_TOKEN` (required) - Mapflow API authentication token
 - `MAPFLOW_BASE_URL` (optional) - Base URL for Mapflow API. Default: `https://whitemaps-staging.mapflow.ai`
-- `MAPFLOW_USE_RESOURCES` (optional) - Set to `true` or `1` to expose metadata as MCP resources instead of tools. Default: tools mode.
+- `MAPFLOW_TRANSPORT` (optional) - Transport mode: `stdio` or `http`. Default: `stdio`
+- `PORT` (optional) - HTTP server port, used when `MAPFLOW_TRANSPORT=http`. Default: `3000`
 
 ## Docker
 
 The image is automatically built and published to GitHub Container Registry on push to main.
 
-**Use the published image:**
+**Use the published image (stdio, default):**
 
 ```bash
 docker run -i --rm -e MAPFLOW_TOKEN=your_token ghcr.io/geoalert/mapflow-mcp:latest
+```
+
+**Run as HTTP server:**
+
+```bash
+docker run --rm -p 3000:3000 -e MAPFLOW_TOKEN=your_token -e MAPFLOW_TRANSPORT=http ghcr.io/geoalert/mapflow-mcp:latest
 ```
 
 **Or build locally:**
