@@ -12,5 +12,7 @@ RUN bun install --frozen-lockfile --production
 COPY src ./src
 COPY tsconfig.json ./
 
+ENV MAPFLOW_TRANSPORT=stdio
+
 # Run the MCP server
 CMD ["bun", "run", "src/server.ts"]
