@@ -1,4 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+	ServerNotification,
+	ServerRequest,
+} from "@modelcontextprotocol/sdk/types.js";
 import area from "@turf/area";
 import simplify from "@turf/simplify";
 import * as z from "zod";
@@ -10,10 +15,35 @@ import {
 	mapflowProcessingBlockSchema,
 } from "./schemas.js";
 
+type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+
+function getTokenFromExtra(extra: Extra): string {
+	if (extra.authInfo?.token) {
+		return extra.authInfo.token;
+	}
+	const envToken = Bun.env?.MAPFLOW_TOKEN ?? process.env.MAPFLOW_TOKEN;
+	if (envToken) {
+		return envToken;
+	}
+	throw new Error(
+		"Mapflow API token is required. Provide it via Authorization header or MAPFLOW_TOKEN environment variable.",
+	);
+}
+
 function createServer(): McpServer {
 	const server = new McpServer({ name: "mapflow-mcp", version: "0.1.0" });
-	const mapflowClient = createMapflowClient();
+	const clients = new Map<string, MapflowClient>();
 	const nominatimClient = createNominatimClient();
+
+	function getClient(extra: Extra): MapflowClient {
+		const token = getTokenFromExtra(extra);
+		let client = clients.get(token);
+		if (!client) {
+			client = createMapflowClient(token);
+			clients.set(token, client);
+		}
+		return client;
+	}
 
 	server.registerTool(
 		"start-processing",
@@ -56,16 +86,11 @@ function createServer(): McpServer {
 					),
 			},
 		},
-		async ({
-			name,
-			wdName,
-			geometry,
-			dataProvider,
-			inferenceParams,
-			meta,
-			blocks,
-		}) => {
-			const parsed = await mapflowClient.createProcessing({
+		async (
+			{ name, wdName, geometry, dataProvider, inferenceParams, meta, blocks },
+			extra,
+		) => {
+			const parsed = await getClient(extra).createProcessing({
 				name,
 				wdName,
 				geometry,
@@ -110,8 +135,8 @@ function createServer(): McpServer {
 				processingId: z.uuid().describe("Processing ID to check."),
 			},
 		},
-		async ({ processingId }) => {
-			const parsed = await mapflowClient.getProcessing(processingId);
+		async ({ processingId }, extra) => {
+			const parsed = await getClient(extra).getProcessing(processingId);
 
 			return {
 				content: [
@@ -172,8 +197,8 @@ function createServer(): McpServer {
 					.describe("Optional postprocessing blocks configuration."),
 			},
 		},
-		async ({ wdName, geometry, areaSqKm, dataProvider, blocks }) => {
-			const cost = await mapflowClient.calculateCost({
+		async ({ wdName, geometry, areaSqKm, dataProvider, blocks }, extra) => {
+			const cost = await getClient(extra).calculateCost({
 				wdName,
 				geometry,
 				areaSqKm,
@@ -271,14 +296,17 @@ function createServer(): McpServer {
 		},
 	);
 
-	registerModelsAsTool(server, mapflowClient);
-	registerLimitsAsTool(server, mapflowClient);
-	registerImagerySourcesAsTool(server, mapflowClient);
+	registerModelsAsTool(server, getClient);
+	registerLimitsAsTool(server, getClient);
+	registerImagerySourcesAsTool(server, getClient);
 
 	return server;
 }
 
-function registerModelsAsTool(server: McpServer, client: MapflowClient): void {
+function registerModelsAsTool(
+	server: McpServer,
+	getClient: (extra: Extra) => MapflowClient,
+): void {
 	server.registerTool(
 		"list-models",
 		{
@@ -292,8 +320,8 @@ function registerModelsAsTool(server: McpServer, client: MapflowClient): void {
 				openWorldHint: true,
 			},
 		},
-		async () => {
-			const models = await client.getModels();
+		async (extra: Extra) => {
+			const models = await getClient(extra).getModels();
 			return {
 				content: [
 					{
@@ -307,7 +335,10 @@ function registerModelsAsTool(server: McpServer, client: MapflowClient): void {
 	);
 }
 
-function registerLimitsAsTool(server: McpServer, client: MapflowClient): void {
+function registerLimitsAsTool(
+	server: McpServer,
+	getClient: (extra: Extra) => MapflowClient,
+): void {
 	server.registerTool(
 		"get-limits",
 		{
@@ -320,8 +351,8 @@ function registerLimitsAsTool(server: McpServer, client: MapflowClient): void {
 				openWorldHint: true,
 			},
 		},
-		async () => {
-			const limits = await client.getLimits();
+		async (extra: Extra) => {
+			const limits = await getClient(extra).getLimits();
 			return {
 				content: [
 					{
@@ -337,7 +368,7 @@ function registerLimitsAsTool(server: McpServer, client: MapflowClient): void {
 
 function registerImagerySourcesAsTool(
 	server: McpServer,
-	client: MapflowClient,
+	getClient: (extra: Extra) => MapflowClient,
 ): void {
 	server.registerTool(
 		"list-imagery-sources",
@@ -352,8 +383,8 @@ function registerImagerySourcesAsTool(
 				openWorldHint: true,
 			},
 		},
-		async () => {
-			const sources = await client.getImagerySources();
+		async (extra: Extra) => {
+			const sources = await getClient(extra).getImagerySources();
 			return {
 				content: [
 					{
@@ -388,7 +419,20 @@ try {
 			async fetch(req) {
 				const url = new URL(req.url);
 				if (url.pathname === "/mcp") {
-					return webTransport.handleRequest(req);
+					const authHeader = req.headers.get("authorization");
+					const bearerToken = authHeader?.startsWith("Bearer ")
+						? authHeader.slice(7)
+						: undefined;
+
+					return webTransport.handleRequest(req, {
+						authInfo: bearerToken
+							? {
+									token: bearerToken,
+									clientId: "http-client",
+									scopes: [],
+								}
+							: undefined,
+					});
 				}
 				return new Response("Not Found", { status: 404 });
 			},
