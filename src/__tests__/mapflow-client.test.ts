@@ -7,7 +7,7 @@ import {
 	setSystemTime,
 	test,
 } from "bun:test";
-import { createMapflowClient, getMapflowToken } from "../mapflow-client.js";
+import { createMapflowClient } from "../mapflow-client.js";
 
 const mockUserStatus = {
 	email: "test@example.com",
@@ -18,20 +18,6 @@ const mockUserStatus = {
 	models: [],
 	teams: [],
 };
-
-describe("getMapflowToken", () => {
-	test("returns token from environment", () => {
-		// Bun.env is read at module load, so just verify the function works
-		const originalToken = process.env.MAPFLOW_TOKEN;
-		process.env.MAPFLOW_TOKEN = "test-token-123";
-
-		// Need to test with a fresh import or accept Bun.env behavior
-		// For now, test that the function returns a string when token is set
-		expect(typeof getMapflowToken()).toBe("string");
-
-		process.env.MAPFLOW_TOKEN = originalToken;
-	});
-});
 
 describe("request authentication", () => {
 	let originalFetch: typeof fetch;
@@ -59,7 +45,7 @@ describe("request authentication", () => {
 	});
 
 	test("includes Basic authorization header", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		await client.request("/rest/user/status");
 
 		expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -76,7 +62,7 @@ describe("request authentication", () => {
 			Promise.resolve(new Response("Unauthorized", { status: 401 })),
 		);
 
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 
 		await expect(client.request("/test")).rejects.toThrow(
 			"Mapflow API request failed: 401",
@@ -88,7 +74,7 @@ describe("request authentication", () => {
 			Promise.resolve(new Response("Forbidden", { status: 403 })),
 		);
 
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 
 		await expect(client.request("/test")).rejects.toThrow(
 			"Mapflow API request failed: 403",
@@ -123,7 +109,7 @@ describe("getCachedUserStatus", () => {
 	});
 
 	test("fetches from API on first call", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		const result = await client.getCachedUserStatus();
 
 		expect(result.email).toBe("test@example.com");
@@ -131,7 +117,7 @@ describe("getCachedUserStatus", () => {
 	});
 
 	test("returns cached data within TTL (5 minutes)", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 
 		await client.getCachedUserStatus();
 		expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -144,7 +130,7 @@ describe("getCachedUserStatus", () => {
 	});
 
 	test("refreshes cache after TTL expires", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 
 		await client.getCachedUserStatus();
 		expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -157,7 +143,7 @@ describe("getCachedUserStatus", () => {
 	});
 
 	test("cache valid at 4:59.999, expired at 5:00.000", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 
 		await client.getCachedUserStatus();
 		expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -229,7 +215,7 @@ describe("createProcessing", () => {
 	});
 
 	test("sends POST request to /rest/processings/v2", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		await client.createProcessing({
 			name: "Test",
 			wdName: "🏠 Buildings",
@@ -244,7 +230,7 @@ describe("createProcessing", () => {
 	});
 
 	test("transforms flat input to v2 nested params", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		await client.createProcessing({
 			name: "Test",
 			wdName: "🏠 Buildings",
@@ -264,7 +250,7 @@ describe("createProcessing", () => {
 	});
 
 	test("returns parsed processing response", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		const result = await client.createProcessing({
 			name: "Test",
 			wdName: "🏠 Buildings",
@@ -303,7 +289,7 @@ describe("getProcessing", () => {
 	});
 
 	test("sends GET request to /rest/processings/{id}/v2", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		const processingId = "550e8400-e29b-41d4-a716-446655440000";
 		await client.getProcessing(processingId);
 
@@ -315,7 +301,7 @@ describe("getProcessing", () => {
 	});
 
 	test("returns parsed processing with status and progress", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		const result = await client.getProcessing(mockProcessing.id);
 
 		expect(result.id).toBe(mockProcessing.id);
@@ -370,7 +356,7 @@ describe("calculateCost", () => {
 	});
 
 	test("sends POST request to /rest/processing/cost/v2", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		await client.calculateCost({
 			wdName: "🏠 Buildings",
 			geometry: mockGeometry,
@@ -386,7 +372,7 @@ describe("calculateCost", () => {
 	});
 
 	test("accepts areaSqKm instead of geometry", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		await client.calculateCost({
 			wdName: "🏠 Buildings",
 			areaSqKm: 10,
@@ -401,7 +387,7 @@ describe("calculateCost", () => {
 	});
 
 	test("returns cost as number", async () => {
-		const client = createMapflowClient();
+		const client = createMapflowClient("test-token");
 		const cost = await client.calculateCost({
 			wdName: "🏠 Buildings",
 			geometry: mockGeometry,

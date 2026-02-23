@@ -45,21 +45,10 @@ export type MapflowClient = {
 	calculateCost: (request: CalculateCostRequest) => Promise<number>;
 };
 
-export function getMapflowToken() {
-	const token = Bun.env?.MAPFLOW_TOKEN ?? process.env.MAPFLOW_TOKEN;
-	if (!token) {
-		throw new Error(
-			"Mapflow API token is required. Please set MAPFLOW_TOKEN environment variable.",
-		);
-	}
-	return token;
-}
-
-export function createMapflowClient(): MapflowClient {
+export function createMapflowClient(token: string): MapflowClient {
 	let userStatusCache: { data: UserStatus; expiresAt: number } | null = null;
 
 	const withAuthHeaders = (init?: RequestInit) => {
-		const token = getMapflowToken();
 		return {
 			Authorization: `Basic ${token}`,
 			Accept: "application/json",
