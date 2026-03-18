@@ -163,6 +163,7 @@ describe("getCachedUserStatus", () => {
 const mockProcessing = {
 	id: "550e8400-e29b-41d4-a716-446655440000",
 	name: "Test Processing",
+	projectId: "770e8400-e29b-41d4-a716-446655440099",
 	status: "IN_PROGRESS",
 	percentCompleted: 50,
 	cost: 10.5,
@@ -249,6 +250,22 @@ describe("createProcessing", () => {
 		expect(body.params.inferenceParams).toEqual({ threshold: 0.5 });
 	});
 
+	test("includes projectId in request body when provided", async () => {
+		const client = createMapflowClient("test-token");
+		const projectId = "770e8400-e29b-41d4-a716-446655440099";
+		await client.createProcessing({
+			name: "Test",
+			wdName: "🏠 Buildings",
+			geometry: mockGeometry,
+			dataProvider: { name: "Mapbox", zoom: 18 },
+			projectId,
+		});
+
+		const [, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		const body = JSON.parse(init.body as string);
+		expect(body.projectId).toBe(projectId);
+	});
+
 	test("returns parsed processing response", async () => {
 		const client = createMapflowClient("test-token");
 		const result = await client.createProcessing({
@@ -305,6 +322,7 @@ describe("getProcessing", () => {
 		const result = await client.getProcessing(mockProcessing.id);
 
 		expect(result.id).toBe(mockProcessing.id);
+		expect(result.projectId).toBe(mockProcessing.projectId);
 		expect(result.status).toBe("IN_PROGRESS");
 		expect(result.percentCompleted).toBe(50);
 	});

@@ -141,6 +141,7 @@ export function createMapflowClient(token: string): MapflowClient {
 			name: req.name,
 			wdName: req.wdName,
 			geometry: req.geometry,
+			projectId: req.projectId,
 			params: {
 				sourceParams,
 				...(req.inferenceParams && {

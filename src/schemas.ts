@@ -209,6 +209,7 @@ export const createProcessingRequestSchema = z.object({
 	wdName: z.string().min(1),
 	geometry: geoJsonGeometrySchema,
 	dataProvider: mapflowDataProviderParamsSchema,
+	projectId: z.uuid().optional(),
 	inferenceParams: z.record(z.string(), z.unknown()).optional(),
 	blocks: z.array(mapflowProcessingBlockSchema).optional(),
 	meta: z.record(z.string(), z.unknown()).optional(),
