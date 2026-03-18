@@ -74,6 +74,10 @@ function createServer(): McpServer {
 					.record(z.string(), z.unknown())
 					.optional()
 					.describe("Optional model inference parameters."),
+				projectId: z
+					.uuid()
+					.optional()
+					.describe("Optional project ID to associate the processing with."),
 				meta: z
 					.record(z.string(), z.unknown())
 					.optional()
@@ -87,7 +91,16 @@ function createServer(): McpServer {
 			},
 		},
 		async (
-			{ name, wdName, geometry, dataProvider, inferenceParams, meta, blocks },
+			{
+				name,
+				wdName,
+				geometry,
+				dataProvider,
+				inferenceParams,
+				projectId,
+				meta,
+				blocks,
+			},
 			extra,
 		) => {
 			const parsed = await getClient(extra).createProcessing({
@@ -95,6 +108,7 @@ function createServer(): McpServer {
 				wdName,
 				geometry,
 				dataProvider,
+				projectId,
 				inferenceParams,
 				meta,
 				blocks,
@@ -107,6 +121,7 @@ function createServer(): McpServer {
 						text: JSON.stringify(
 							{
 								id: parsed.id,
+								projectId: parsed.projectId,
 								status: parsed.status,
 								cost: parsed.cost,
 								vectorLayer: parsed.vectorLayer,
@@ -146,6 +161,7 @@ function createServer(): McpServer {
 							{
 								id: parsed.id,
 								name: parsed.name,
+								projectId: parsed.projectId,
 								status: parsed.status,
 								percentCompleted: parsed.percentCompleted,
 								cost: parsed.cost,
