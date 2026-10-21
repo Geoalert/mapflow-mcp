@@ -1,0 +1,536 @@
+{
+	"openapi": "3.0.0",
+	"info": {
+		"title": "Data Catalog mosaic contract audit extract",
+		"version": "2026-10-14"
+	},
+	"x-source-url": "https://whitemaps-staging.mapflow.ai/rest/rasters/openapi.json",
+	"x-retrieved-on": "2026-10-14",
+	"x-scope": "Public schema only; no authenticated data requests",
+	"paths": {
+		"/rest/rasters/mosaic/page": {
+			"get": {
+				"summary": "Get Mosaic Page",
+				"operationId": "get_mosaic_page_rest_rasters_mosaic_page_get",
+				"security": [
+					{
+						"StandardHTTPSecurity": []
+					}
+				],
+				"parameters": [
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"maximum": 100,
+							"minimum": 1,
+							"default": 20,
+							"title": "Limit"
+						}
+					},
+					{
+						"name": "offset",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 0,
+							"default": 0,
+							"title": "Offset"
+						}
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"enum": ["created_at", "name", "size_in_bytes"],
+							"type": "string",
+							"default": "created_at",
+							"title": "Sort"
+						}
+					},
+					{
+						"name": "order",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"enum": ["asc", "desc"],
+							"type": "string",
+							"default": "desc",
+							"title": "Order"
+						}
+					},
+					{
+						"name": "tags",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								{
+									"type": "null"
+								}
+							],
+							"title": "Tags"
+						}
+					},
+					{
+						"name": "name_contains",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 255
+								},
+								{
+									"type": "null"
+								}
+							],
+							"title": "Name Contains"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful Response",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MosaicPageResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPValidationError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/rest/rasters/mosaic/{mosaic_id}": {
+			"get": {
+				"summary": "Get Mosaic By Id",
+				"operationId": "get_mosaic_by_id_rest_rasters_mosaic__mosaic_id__get",
+				"security": [
+					{
+						"StandardHTTPSecurity": []
+					}
+				],
+				"parameters": [
+					{
+						"name": "mosaic_id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"title": "Mosaic Id"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful Response",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/MosaicReturnSchema"
+										},
+										{
+											"$ref": "#/components/schemas/MosaicReturnErrorSchema"
+										}
+									],
+									"title": "Response Get Mosaic By Id Rest Rasters Mosaic  Mosaic Id  Get"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPValidationError"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/rest/rasters/mosaic/{mosaic_id}/status": {
+			"get": {
+				"summary": "Get mosaic status with all images",
+				"description": "Returns status of all images in a mosaic, including those being preprocessed or failed. Useful for checking upload progress and identifying failed images.",
+				"operationId": "get_mosaic_status_rest_rasters_mosaic__mosaic_id__status_get",
+				"security": [
+					{
+						"StandardHTTPSecurity": []
+					}
+				],
+				"parameters": [
+					{
+						"name": "mosaic_id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"format": "uuid",
+							"title": "Mosaic Id"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Successful Response",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MosaicStatusResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Validation Error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HTTPValidationError"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	},
+	"components": {
+		"schemas": {
+			"MosaicPageResponse": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/MosaicReturnSchema"
+						},
+						"type": "array",
+						"title": "Items"
+					},
+					"limit": {
+						"type": "integer",
+						"title": "Limit"
+					},
+					"offset": {
+						"type": "integer",
+						"title": "Offset"
+					},
+					"total": {
+						"type": "integer",
+						"title": "Total"
+					},
+					"has_next": {
+						"type": "boolean",
+						"title": "Has Next"
+					}
+				},
+				"type": "object",
+				"required": ["items", "limit", "offset", "total", "has_next"],
+				"title": "MosaicPageResponse",
+				"description": "Paginated response for GET /mosaic/page.\n\nRecommended for clients that may display many mosaics — the legacy\nGET /mosaic returns the whole list and is being kept for\nbackward-compat (QGIS plugin etc.)."
+			},
+			"MosaicReturnSchema": {
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"title": "Id"
+					},
+					"rasterLayer": {
+						"additionalProperties": true,
+						"type": "object",
+						"title": "Rasterlayer"
+					},
+					"tags": {
+						"anyOf": [
+							{
+								"items": {
+									"type": "string"
+								},
+								"type": "array"
+							},
+							{
+								"type": "null"
+							}
+						],
+						"title": "Tags"
+					},
+					"name": {
+						"type": "string",
+						"title": "Name"
+					},
+					"created_at": {
+						"type": "string",
+						"format": "date-time",
+						"title": "Created At"
+					},
+					"footprint": {
+						"type": "string",
+						"title": "Footprint"
+					},
+					"sizeInBytes": {
+						"type": "integer",
+						"title": "Sizeinbytes"
+					},
+					"status_summary": {
+						"$ref": "#/components/schemas/StatusSummarySchema"
+					}
+				},
+				"type": "object",
+				"required": [
+					"id",
+					"rasterLayer",
+					"tags",
+					"name",
+					"created_at",
+					"footprint",
+					"sizeInBytes",
+					"status_summary"
+				],
+				"title": "MosaicReturnSchema"
+			},
+			"StatusSummarySchema": {
+				"properties": {
+					"total": {
+						"type": "integer",
+						"title": "Total"
+					},
+					"ready": {
+						"type": "integer",
+						"title": "Ready"
+					},
+					"pending": {
+						"type": "integer",
+						"title": "Pending"
+					},
+					"in_progress": {
+						"type": "integer",
+						"title": "In Progress"
+					},
+					"failed": {
+						"type": "integer",
+						"title": "Failed"
+					},
+					"loading": {
+						"type": "integer",
+						"title": "Loading",
+						"default": 0
+					}
+				},
+				"type": "object",
+				"required": ["total", "ready", "pending", "in_progress", "failed"],
+				"title": "StatusSummarySchema"
+			},
+			"HTTPValidationError": {
+				"properties": {
+					"detail": {
+						"items": {
+							"$ref": "#/components/schemas/ValidationError"
+						},
+						"type": "array",
+						"title": "Detail"
+					}
+				},
+				"type": "object",
+				"title": "HTTPValidationError"
+			},
+			"ValidationError": {
+				"properties": {
+					"loc": {
+						"items": {
+							"anyOf": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "integer"
+								}
+							]
+						},
+						"type": "array",
+						"title": "Location"
+					},
+					"msg": {
+						"type": "string",
+						"title": "Message"
+					},
+					"type": {
+						"type": "string",
+						"title": "Error Type"
+					}
+				},
+				"type": "object",
+				"required": ["loc", "msg", "type"],
+				"title": "ValidationError"
+			},
+			"MosaicReturnErrorSchema": {
+				"properties": {
+					"message": {
+						"type": "string",
+						"title": "Message"
+					}
+				},
+				"type": "object",
+				"required": ["message"],
+				"title": "MosaicReturnErrorSchema"
+			},
+			"MosaicStatusResponse": {
+				"properties": {
+					"mosaic_id": {
+						"type": "string",
+						"format": "uuid",
+						"title": "Mosaic Id"
+					},
+					"total_images": {
+						"type": "integer",
+						"title": "Total Images"
+					},
+					"ready_images": {
+						"type": "integer",
+						"title": "Ready Images"
+					},
+					"pending_images": {
+						"type": "integer",
+						"title": "Pending Images"
+					},
+					"in_progress_images": {
+						"type": "integer",
+						"title": "In Progress Images"
+					},
+					"failed_images": {
+						"type": "integer",
+						"title": "Failed Images"
+					},
+					"loading_images": {
+						"type": "integer",
+						"title": "Loading Images",
+						"default": 0
+					},
+					"tiles_ready_images": {
+						"type": "integer",
+						"title": "Tiles Ready Images"
+					},
+					"images": {
+						"items": {
+							"$ref": "#/components/schemas/ImageStatusResponse"
+						},
+						"type": "array",
+						"title": "Images"
+					}
+				},
+				"type": "object",
+				"required": [
+					"mosaic_id",
+					"total_images",
+					"ready_images",
+					"pending_images",
+					"in_progress_images",
+					"failed_images",
+					"tiles_ready_images",
+					"images"
+				],
+				"title": "MosaicStatusResponse",
+				"description": "Response schema for mosaic status with all images including non-ready ones."
+			},
+			"ImageStatusResponse": {
+				"properties": {
+					"image_id": {
+						"type": "string",
+						"format": "uuid",
+						"title": "Image Id"
+					},
+					"filename": {
+						"type": "string",
+						"title": "Filename"
+					},
+					"preprocessing_status": {
+						"type": "string",
+						"title": "Preprocessing Status"
+					},
+					"preprocessing_error": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "null"
+							}
+						],
+						"title": "Preprocessing Error"
+					},
+					"data_available": {
+						"type": "boolean",
+						"title": "Data Available"
+					},
+					"tiles_ready": {
+						"type": "boolean",
+						"title": "Tiles Ready",
+						"default": false
+					},
+					"uploaded_at": {
+						"type": "string",
+						"format": "date-time",
+						"title": "Uploaded At"
+					},
+					"state": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "null"
+							}
+						],
+						"title": "State"
+					}
+				},
+				"type": "object",
+				"required": [
+					"image_id",
+					"filename",
+					"preprocessing_status",
+					"data_available",
+					"uploaded_at"
+				],
+				"title": "ImageStatusResponse",
+				"description": "Response schema for image preprocessing status check."
+			}
+		},
+		"securitySchemes": {
+			"StandardHTTPSecurity": {
+				"type": "http",
+				"description": "Standard HTTP authentication systems, including: basic auth, bearer or httpdigest",
+				"scheme": "basic"
+			}
+		}
+	}
+}

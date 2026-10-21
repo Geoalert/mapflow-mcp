@@ -177,7 +177,7 @@ const mockProcessing = {
 	messages: [],
 };
 
-const mockGeometry = {
+const mockGeometry: { type: "Polygon"; coordinates: [number, number][][] } = {
 	type: "Polygon",
 	coordinates: [
 		[
@@ -197,12 +197,27 @@ describe("createProcessing", () => {
 
 	beforeEach(() => {
 		originalFetch = globalThis.fetch;
-		mockFetch = mock(() =>
+		mockFetch = mock((url: URL) =>
 			Promise.resolve(
-				new Response(JSON.stringify(mockProcessing), {
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				}),
+				new Response(
+					JSON.stringify(
+						url.pathname === "/rest/user/status"
+							? {
+									models: [
+										{
+											id: "550e8400-e29b-41d4-a716-446655440000",
+											name: "🏠 Buildings",
+										},
+									],
+									dataProviders: [{ name: "Mapbox" }],
+								}
+							: mockProcessing,
+					),
+					{
+						status: 200,
+						headers: { "Content-Type": "application/json" },
+					},
+				),
 			),
 		);
 		globalThis.fetch = mockFetch as unknown as typeof fetch;
@@ -224,8 +239,8 @@ describe("createProcessing", () => {
 			dataProvider: { name: "Mapbox", zoom: 18 },
 		});
 
-		expect(mockFetch).toHaveBeenCalledTimes(1);
-		const [url, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		expect(mockFetch).toHaveBeenCalledTimes(2);
+		const [url, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
 		expect(url.toString()).toBe("https://api.mapflow.ai/rest/processings/v2");
 		expect(init.method).toBe("POST");
 	});
@@ -237,17 +252,17 @@ describe("createProcessing", () => {
 			wdName: "🏠 Buildings",
 			geometry: mockGeometry,
 			dataProvider: { name: "Mapbox", zoom: 18 },
-			inferenceParams: { threshold: 0.5 },
+			inferenceParams: { threshold: "0.5" },
 		});
 
-		const [, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		const [, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
 		const body = JSON.parse(init.body as string);
 
 		expect(body.params.sourceParams.dataProvider).toEqual({
 			providerName: "Mapbox",
 			zoom: 18,
 		});
-		expect(body.params.inferenceParams).toEqual({ threshold: 0.5 });
+		expect(body.params.inferenceParams).toEqual({ threshold: "0.5" });
 	});
 
 	test("includes projectId in request body when provided", async () => {
@@ -261,7 +276,7 @@ describe("createProcessing", () => {
 			projectId,
 		});
 
-		const [, init] = mockFetch.mock.calls[0] as [URL, RequestInit];
+		const [, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
 		const body = JSON.parse(init.body as string);
 		expect(body.projectId).toBe(projectId);
 	});
@@ -357,7 +372,7 @@ describe("calculateCost", () => {
 				);
 			}
 			return Promise.resolve(
-				new Response("15.5", {
+				new Response(JSON.stringify({ dataCost: 5, processingCost: 10.5 }), {
 					status: 200,
 					headers: { "Content-Type": "text/plain" },
 				}),
@@ -373,7 +388,7 @@ describe("calculateCost", () => {
 		process.env = { ...originalEnv };
 	});
 
-	test("sends POST request to /rest/processing/cost/v2", async () => {
+	test("sends POST request to /rest/processing/cost/details/v2", async () => {
 		const client = createMapflowClient("test-token");
 		await client.calculateCost({
 			wdName: "🏠 Buildings",
@@ -384,7 +399,7 @@ describe("calculateCost", () => {
 		expect(mockFetch).toHaveBeenCalledTimes(2);
 		const [url, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
 		expect(url.toString()).toBe(
-			"https://api.mapflow.ai/rest/processing/cost/v2",
+			"https://api.mapflow.ai/rest/processing/cost/details/v2",
 		);
 		expect(init.method).toBe("POST");
 	});
@@ -404,13 +419,19 @@ describe("calculateCost", () => {
 		expect(body.geometry).toBeUndefined();
 	});
 
-	test("returns cost as number", async () => {
+	test("returns total and cost breakdown", async () => {
 		const client = createMapflowClient("test-token");
 		const cost = await client.calculateCost({
 			wdName: "🏠 Buildings",
 			geometry: mockGeometry,
 		});
 
-		expect(cost).toBe(15.5);
+		expect(cost).toEqual({
+			cost: 15.5,
+			dataCost: 5,
+			processingCost: 10.5,
+			unit: "credits",
+			preliminary: true,
+		});
 	});
 });
