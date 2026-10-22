@@ -184,3 +184,11 @@ Get your Mapflow API token at [app.mapflow.ai](https://app.mapflow.ai).
 ## License
 
 MIT
+
+### OAuth (Keycloak)
+
+The optional `/mcp/oauth` endpoint supports Authorization Code + PKCE through
+Keycloak, JWT verification and user token exchange to the Mapflow API. The
+existing `/mcp` API-token endpoint and stdio mode are retained.
+See [OAuth setup and duty deployment](docs/oauth.md) for environment variables,
+Keycloak configuration, secret injection and Claude/ChatGPT verification.

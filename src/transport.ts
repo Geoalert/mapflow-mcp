@@ -10,7 +10,12 @@ export class ApiError extends Error {
 export type ApiTransport = ReturnType<typeof createTransport>;
 const unknownOutcome =
 	"Processing request outcome is unknown. Check list-processings before retrying; do not automatically repeat the charge.";
-export function createTransport(token: string) {
+export type ApiCredentials = string | { scheme: "Bearer"; token: string };
+export function createTransport(credentials: ApiCredentials) {
+	const authorization =
+		typeof credentials === "string"
+			? `Basic ${credentials}`
+			: `Bearer ${credentials.token}`;
 	const request = async (path: string, init?: RequestInit) => {
 		const base =
 			Bun.env.MAPFLOW_BASE_URL ?? "https://whitemaps-staging.mapflow.ai";
@@ -26,7 +31,7 @@ export function createTransport(token: string) {
 				headers: {
 					Accept: "application/json",
 					...init?.headers,
-					Authorization: `Basic ${token}`,
+					Authorization: authorization,
 				},
 			});
 		} catch {

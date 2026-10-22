@@ -14,7 +14,7 @@ import {
 	type mapflowUserLimitsSchema,
 	mapflowUserStatusSchema,
 } from "./schemas.js";
-import { ApiError, createTransport } from "./transport.js";
+import { type ApiCredentials, ApiError, createTransport } from "./transport.js";
 export type { CalculateCostRequest, CreateProcessingRequest };
 export type UserStatus = z.infer<typeof mapflowUserStatusSchema>;
 export type UserLimits = z.infer<typeof mapflowUserLimitsSchema>;
@@ -22,7 +22,7 @@ export type Model = z.infer<typeof mapflowModelSchema>;
 export type DataProvider = z.infer<typeof mapflowDataProviderSchema>;
 export type Processing = z.infer<typeof processingSchema>;
 export type MapflowClient = ReturnType<typeof createMapflowClient>;
-export function createMapflowClient(token: string) {
+export function createMapflowClient(token: ApiCredentials) {
 	const http = createTransport(token);
 	const reads = createReadClient(http);
 	let cache: { data: UserStatus; expiresAt: number } | null = null;

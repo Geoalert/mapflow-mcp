@@ -1,0 +1,15 @@
+# Merge into envs/duty/mapflow.yaml after publishing the new MCP image.
+mapflowMcp:
+  # Set tag to the seven-character upstream commit SHA built by project 476.
+  # tag: "<published-upstream-sha>"
+  extraEnv:
+    MAPFLOW_TRANSPORT: "http"
+    MAPFLOW_BASE_URL: "https://duty.mapflow.ai"
+    MCP_OAUTH_ISSUER: "https://auth-duty.mapflow.ai/auth/realms/mapflow-duty"
+    MCP_OAUTH_RESOURCE: "https://mapflow-mcp-duty.mapflow.ai/mcp/oauth"
+    MCP_OAUTH_CLIENT_ID: "mapflow-mcp-test"
+    MCP_OAUTH_API_AUDIENCE: "mapflow"
+    MCP_OAUTH_SCOPE: "mapflow:mcp"
+  extraEnvFrom:
+    - secretRef:
+        name: mapflow-mcp-oauth

@@ -41,7 +41,10 @@ describe("request authentication", () => {
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		process.env = { ...originalEnv };
+		for (const key of ["MAPFLOW_TOKEN", "MAPFLOW_BASE_URL"]) {
+			if (originalEnv[key] === undefined) delete process.env[key];
+			else process.env[key] = originalEnv[key];
+		}
 	});
 
 	test("includes Basic authorization header", async () => {
@@ -104,7 +107,10 @@ describe("getCachedUserStatus", () => {
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		process.env = { ...originalEnv };
+		for (const key of ["MAPFLOW_TOKEN", "MAPFLOW_BASE_URL"]) {
+			if (originalEnv[key] === undefined) delete process.env[key];
+			else process.env[key] = originalEnv[key];
+		}
 		setSystemTime();
 	});
 
@@ -227,7 +233,10 @@ describe("createProcessing", () => {
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		process.env = { ...originalEnv };
+		for (const key of ["MAPFLOW_TOKEN", "MAPFLOW_BASE_URL"]) {
+			if (originalEnv[key] === undefined) delete process.env[key];
+			else process.env[key] = originalEnv[key];
+		}
 	});
 
 	test("sends POST request to /rest/processings/v2", async () => {
@@ -317,7 +326,10 @@ describe("getProcessing", () => {
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		process.env = { ...originalEnv };
+		for (const key of ["MAPFLOW_TOKEN", "MAPFLOW_BASE_URL"]) {
+			if (originalEnv[key] === undefined) delete process.env[key];
+			else process.env[key] = originalEnv[key];
+		}
 	});
 
 	test("sends GET request to /rest/processings/{id}/v2", async () => {
@@ -385,7 +397,10 @@ describe("calculateCost", () => {
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		process.env = { ...originalEnv };
+		for (const key of ["MAPFLOW_TOKEN", "MAPFLOW_BASE_URL"]) {
+			if (originalEnv[key] === undefined) delete process.env[key];
+			else process.env[key] = originalEnv[key];
+		}
 	});
 
 	test("sends POST request to /rest/processing/cost/details/v2", async () => {
