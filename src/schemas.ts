@@ -203,28 +203,11 @@ export const nominatimResultSchema = z
 
 export const nominatimSearchResponseSchema = z.array(nominatimResultSchema);
 
-// Request schemas for v2 API
-export const createProcessingRequestSchema = z.object({
-	name: z.string().min(1),
-	wdName: z.string().min(1),
-	geometry: geoJsonGeometrySchema,
-	dataProvider: mapflowDataProviderParamsSchema,
-	projectId: z.uuid().optional(),
-	inferenceParams: z.record(z.string(), z.unknown()).optional(),
-	blocks: z.array(mapflowProcessingBlockSchema).optional(),
-	meta: z.record(z.string(), z.unknown()).optional(),
-});
-
-export type CreateProcessingRequest = z.infer<
-	typeof createProcessingRequestSchema
->;
-
-export const calculateCostRequestSchema = z.object({
-	wdName: z.string().min(1),
-	geometry: geoJsonGeometrySchema.optional(),
-	areaSqKm: z.number().optional(),
-	dataProvider: mapflowDataProviderParamsSchema.optional(),
-	blocks: z.array(mapflowProcessingBlockSchema).optional(),
-});
-
-export type CalculateCostRequest = z.infer<typeof calculateCostRequestSchema>;
+export type {
+	CalculateCostRequest,
+	CreateProcessingRequest,
+} from "./inputs.js";
+export {
+	calculateCostRequestSchema,
+	createProcessingRequestSchema,
+} from "./inputs.js";
