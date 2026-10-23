@@ -71,6 +71,24 @@ export function createOAuth(config: OAuthConfig) {
 			})
 		).payload;
 	return {
+		authorizationMetadataPath: `/.well-known/oauth-authorization-server${new URL(issuer).pathname.replace(/\/$/, "")}`,
+		// Published on the issuer host by an exact-path duty ingress. Keycloak
+		// remains the authorization server; this is only its MCP discovery view.
+		authorizationMetadata: {
+			issuer,
+			authorization_endpoint: `${issuer}/protocol/openid-connect/auth`,
+			token_endpoint: `${issuer}/protocol/openid-connect/token`,
+			registration_endpoint: `${issuer}/clients-registrations/openid-connect`,
+			jwks_uri: `${issuer}/protocol/openid-connect/certs`,
+			scopes_supported: ["openid", config.scope],
+			response_types_supported: ["code"],
+			grant_types_supported: ["authorization_code", "refresh_token"],
+			token_endpoint_auth_methods_supported: [
+				"client_secret_basic",
+				"client_secret_post",
+			],
+			code_challenge_methods_supported: ["S256"],
+		},
 		metadata: {
 			resource: config.resource,
 			authorization_servers: [issuer],

@@ -212,6 +212,41 @@ test("OAuth HTTP discovery and challenges never fall back to the environment tok
 	}
 });
 
+test("Keycloak OAuth discovery advertises only MCP scopes and direct issuer endpoints", async () => {
+	const config = {
+		issuer: "https://auth.example/auth/realms/duty",
+		resource: "https://mcp.example/mcp/oauth",
+		clientId: "mcp-test",
+		clientSecret: "never-publish-this",
+		audience: "mapflow",
+		scope: "mapflow:mcp",
+	};
+	const path = "/.well-known/oauth-authorization-server/auth/realms/duty";
+	const handle = createHttpHandler(config);
+	const response = await handle(new Request(`https://auth.example${path}`));
+	expect(response.status).toBe(200);
+	const body = await response.json();
+	expect(body).toMatchObject({
+		issuer: config.issuer,
+		scopes_supported: ["openid", "mapflow:mcp"],
+		code_challenge_methods_supported: ["S256"],
+		registration_endpoint: `${config.issuer}/clients-registrations/openid-connect`,
+		token_endpoint: `${config.issuer}/protocol/openid-connect/token`,
+	});
+	expect(JSON.stringify(body)).not.toContain(config.clientSecret);
+	expect(
+		(
+			await handle(
+				new Request(`https://auth.example${path}`, { method: "POST" }),
+			)
+		).status,
+	).toBe(405);
+	expect(
+		(await createHttpHandler()(new Request(`https://auth.example${path}`)))
+			.status,
+	).toBe(404);
+});
+
 test("OAuth configuration is opt-in and rejects partial or insecure configuration", () => {
 	expect(readOAuthConfig({})).toBeUndefined();
 	expect(() =>
