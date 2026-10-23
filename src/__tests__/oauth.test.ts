@@ -36,6 +36,7 @@ async function fixture() {
 				"urn:ietf:params:oauth:grant-type:token-exchange",
 			);
 			expect(body.get("client_secret")).toBe("test-secret");
+			expect(body.get("client_id")).toBe("mcp-test");
 			expect(body.get("audience")).toBe("mapflow");
 			if (rejectExchange)
 				return new Response("private provider diagnostics", { status: 400 });
@@ -76,6 +77,9 @@ test("OAuth verifies signatures, audience, client and scopes before exchanging",
 		for (const claims of [
 			{ aud: "other" },
 			{ aud: f.config.resource, azp: "other" },
+			{ aud: "mcp-test", azp: "dynamic-client" },
+			{ aud: [f.config.resource, "mcp-test"], azp: "" },
+			{ aud: [f.config.resource, "mcp-test"], azp: null },
 			{ aud: f.config.resource, typ: "ID" },
 		]) {
 			await expect(
@@ -101,6 +105,33 @@ test("OAuth verifies signatures, audience, client and scopes before exchanging",
 		);
 		expect(credentials.scheme).toBe("Bearer");
 		expect(f.exchanges()).toBe(1);
+	} finally {
+		f.provider.stop(true);
+	}
+});
+
+test("DCR clients can delegate to the server exchange client with both audiences", async () => {
+	const f = await fixture();
+	try {
+		const auth = createOAuth(f.config);
+		const claims = {
+			azp: "dynamically-registered-client",
+			aud: [f.config.resource, f.config.clientId],
+		};
+		await expect(
+			auth.authenticate(
+				`Bearer ${await f.sign({ ...claims, scope: "openid" })}`,
+			),
+		).rejects.toMatchObject({ status: 403 });
+		expect(f.exchanges()).toBe(0);
+		expect(
+			(await auth.authenticate(`Bearer ${await f.sign(claims)}`)).scheme,
+		).toBe("Bearer");
+		expect(f.exchanges()).toBe(1);
+		f.changeTarget("another-user", "mapflow");
+		await expect(
+			auth.authenticate(`Bearer ${await f.sign(claims)}`),
+		).rejects.toMatchObject({ status: 502 });
 	} finally {
 		f.provider.stop(true);
 	}

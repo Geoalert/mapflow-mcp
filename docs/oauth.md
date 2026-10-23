@@ -31,9 +31,46 @@ verified; the previous deployment used `https://whitemaps-duty.mapflow.ai`.
 Use the confidential `mapflow-mcp-test` client already configured on duty for
 Authorization Code + PKCE S256 and legacy token exchange to `mapflow`.
 Direct grants, implicit flow and service accounts remain disabled.
-Both hosts must use this predefined client ID and its secret: this implementation
-requires incoming `azp` to equal `MCP_OAUTH_CLIENT_ID`. Open dynamic registration
-is not needed. Do not reuse the public Mapflow frontend client for MCP login.
+`MCP_OAUTH_CLIENT_ID` identifies the confidential **server exchange client**.
+Hosts can either use this predefined client or register their own clients via
+Keycloak DCR. Do not distribute the server secret to dynamically registered
+hosts. Do not reuse the public Mapflow frontend client for MCP login.
+
+Tokens from other client IDs must contain both the MCP resource URL and the
+server exchange client ID in `aud`, a nonempty `azp`, and `mapflow:mcp` in scope.
+Signature, issuer, expiry and Bearer token type validation remain mandatory.
+Existing tokens issued to the server client remain supported. The exchanged
+token must still target `mapflow` and preserve the authenticated user's `sub`.
+
+### Registration by URL (DCR)
+
+The code supports DCR-issued tokens, but Keycloak provisioning is also required.
+Publishing `registration_endpoint` in discovery alone is not sufficient.
+
+1. Inspect the realm's anonymous client registration policies through Admin API
+   (`components`, type `org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy`).
+   Preserve the existing configuration; in the `allowed-client-templates`
+   provider add `mapflow:mcp` and OIDC's `openid` to `allowed-client-scopes`. Check the actual
+   requested scopes before permitting anything else.
+2. On the `mapflow:mcp` client scope, configure access-token-only audience
+   mappers for the resource URL and `mapflow-mcp-test`. Do not make this scope
+   a realm-wide default. DCR clients must request it during registration/login.
+3. Inspect Trusted Hosts, allowed protocol mappers, client limits and consent
+   policies before enabling registration. Retain explicit user consent and
+   require authorization code + PKCE S256; do not disable the policies wholesale.
+   Trust for registration source hosts and redirect URI hosts are separate
+   concerns. Codex loopback redirects also need to be supported.
+4. Keep the existing exchange permission limited to `mapflow-mcp-test`.
+   Dynamically registered clients must not get admin or token-exchange roles.
+5. Test registration with `codex mcp login` without a predefined client ID,
+   then browser login/consent and a read-only `get-limits` call. Repeat in Claude
+   and ChatGPT; a successful pre-registered-client test does not prove DCR.
+
+Keycloak 20.0.1's new admin console does not expose these registration policies
+in the inspected UI. The realm's `Client policies` tab is a separate mechanism.
+Use authenticated Admin API or `kcadm`; never extract browser session tokens.
+
+### Pre-registered client setup
 
 Before enabling the deployment:
 
@@ -74,11 +111,18 @@ to the metadata URL. GET that URL must return the exact resource, issuer and
 exchange failures return 502 without provider error bodies or credentials.
 
 In each host, add a remote MCP connector with URL
-`https://mapflow-mcp-duty.mapflow.ai/mcp/oauth`, select OAuth and predefined client
-credentials. Copy its exact callback URI into Keycloak, sign in as the user, then
+`https://mapflow-mcp-duty.mapflow.ai/mcp/oauth` and select OAuth. With DCR configured,
+leave predefined client credentials empty. Sign in as the user, then
 list tools and invoke `get-limits` (GET `/rest/user/status`). Confirm the account
 matches the intended user. Do not test with `start-processing`, which is billable.
 Also verify an existing API-token connection to `/mcp` still works.
+
+On duty, Codex DCR registration and browser consent have been verified with
+`codex mcp login <name> --oauth-client-registration dcr --scopes openid,mapflow:mcp`.
+Without explicit scopes, the tested Codex version also requested `roles`, which
+the registration policy rejected. Do not allow every advertised realm scope to
+work around this: URL-only setup in each host still needs separate verification.
+Successful login alone does not prove the deployed server accepts DCR tokens.
 
 `bun test` covers signed JWT validation, wrong audience/client/type, expiry,
 missing scope, exchange identity/audience mismatch, sanitized exchange failure,

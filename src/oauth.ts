@@ -102,7 +102,15 @@ export function createOAuth(config: OAuthConfig) {
 			} catch {
 				throw new OAuthError(401, "invalid_token");
 			}
-			if (source.azp !== config.clientId || source.typ !== "Bearer")
+			// DCR clients have their own azp. They must explicitly delegate to
+			// this exchange client as well as target the MCP resource above.
+			const audiences = Array.isArray(source.aud) ? source.aud : [source.aud];
+			if (
+				typeof source.azp !== "string" ||
+				!source.azp ||
+				source.typ !== "Bearer" ||
+				(source.azp !== config.clientId && !audiences.includes(config.clientId))
+			)
 				throw new OAuthError(401, "invalid_token");
 			if (
 				typeof source.scope !== "string" ||
