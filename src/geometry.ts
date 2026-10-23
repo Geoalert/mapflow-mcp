@@ -6,10 +6,17 @@ import kinks from "@turf/kinks";
 import { parse } from "wellknown";
 import * as z from "zod";
 
-const position = z.tuple([
-	z.number().min(-180).max(180),
-	z.number().min(-90).max(90),
-]);
+const position = z
+	.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)])
+	.meta({
+		// ChatGPT discovery rejects draft-07 tuple items. Keep the runtime tuple
+		// validation, but advertise a fixed-length numeric array to MCP clients.
+		items: { type: "number", minimum: -180, maximum: 180 },
+		minItems: 2,
+		maxItems: 2,
+		description:
+			"WGS84 [longitude, latitude]; longitude -180..180, latitude -90..90.",
+	});
 const line = z.array(position).min(2);
 const ring = z
 	.array(position)

@@ -89,6 +89,41 @@ const calls: [string, Record<string, unknown>][] = [
 		},
 	],
 ];
+test("discovery publishes numeric coordinate arrays while runtime rejects invalid positions", async () => {
+	const { tools } = await client.listTools();
+	let positions = 0;
+	function inspect(value: unknown) {
+		if (!value || typeof value !== "object") return;
+		const node = value as Record<string, unknown>;
+		expect(Array.isArray(node.items)).toBe(false);
+		if (
+			typeof node.description === "string" &&
+			node.description.startsWith("WGS84 [longitude")
+		) {
+			positions++;
+			expect(node).toMatchObject({
+				type: "array",
+				minItems: 2,
+				maxItems: 2,
+				items: { type: "number" },
+			});
+		}
+		for (const child of Object.values(node)) inspect(child);
+	}
+	for (const tool of tools) inspect(tool.inputSchema);
+	expect(positions).toBeGreaterThan(0);
+	for (const coordinates of [[181, 0], [0, 91], [0], [0, 0, 0]]) {
+		const result = await client.callTool({
+			name: "buffer-aoi",
+			arguments: {
+				geometry: { type: "Point", coordinates },
+				distanceMeters: 100,
+			},
+		});
+		expect(result.isError).toBe(true);
+	}
+	expect(requests).toHaveLength(0);
+});
 test("tools/list exposes exactly the 17 tools and output schemas, with only start as a write", async () => {
 	const { tools } = await client.listTools();
 	expect(tools.map((t) => t.name).sort()).toEqual(
