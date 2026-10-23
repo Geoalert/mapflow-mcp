@@ -13,6 +13,12 @@ export function createHttpHandler(config?: OAuthConfig) {
 			origin !== (config ? new URL(config.resource).origin : url.origin)
 		)
 			return new Response("Forbidden origin", { status: 403 });
+		if (oauth && url.pathname === oauth.authorizationMetadataPath) {
+			if (req.method !== "GET") return new Response(null, { status: 405 });
+			return Response.json(oauth.authorizationMetadata, {
+				headers: { "Cache-Control": "no-store" },
+			});
+		}
 		if (
 			oauth &&
 			[

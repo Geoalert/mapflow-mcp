@@ -117,11 +117,25 @@ list tools and invoke `get-limits` (GET `/rest/user/status`). Confirm the accoun
 matches the intended user. Do not test with `start-processing`, which is billable.
 Also verify an existing API-token connection to `/mcp` still works.
 
-On duty, Codex DCR registration and browser consent have been verified with
-`codex mcp login <name> --oauth-client-registration dcr --scopes openid,mapflow:mcp`.
-Without explicit scopes, the tested Codex version also requested `roles`, which
-the registration policy rejected. Do not allow every advertised realm scope to
-work around this: URL-only setup in each host still needs separate verification.
+For URL-only setup, publish the server's RFC 8414 document on the **issuer host**
+at `/.well-known/oauth-authorization-server/auth/realms/mapflow-duty` through an
+exact-path ingress to MCP. The document keeps the real Keycloak issuer and direct
+authorization, token, registration and JWKS endpoints, but advertises only
+`openid` and `mapflow:mcp`. The existing Keycloak ingress retains TLS and all
+other routes, including its original OIDC discovery used by Mapflow Web.
+This does not proxy login or tokens. It affects OAuth discovery for this duty
+issuer; other OAuth consumers needing broader scopes should request them
+explicitly or use the existing OIDC discovery.
+
+Codex 0.160.0 and the tested desktop CLI requested all authorization-server
+scopes during DCR despite narrower protected-resource metadata. Without the
+RFC 8414 route, they fall back to the realm-wide OIDC list and Keycloak rejects
+registration. Do not allow all realm scopes to work around this. The route
+depends on MCP availability; include it in deployment smoke checks.
+
+Configure only the URL and run `codex mcp login <name>` without `--scopes`,
+client credentials or a registration strategy override. Test with a fresh
+server name so a previous login cannot hide registration failures.
 Successful login alone does not prove the deployed server accepts DCR tokens.
 
 `bun test` covers signed JWT validation, wrong audience/client/type, expiry,
