@@ -31,7 +31,7 @@ digest `sha256:2b194670f4eba3670ccd8438de15bdfd13ce552e801f70313e25c941719bd716`
 | `search-imagery-catalog` | ArcGIS, ID `1053325`, варианты zoom 17/18; backend также возвращает предупреждения о невыбранных провайдерах |
 | `get-geoboundary`, `buffer-aoi` | Геометрия и площадь с явным буфером 50 м |
 | `calculate-cost`, `start-processing` | Оценка и запуск с provider/catalog источниками; новый catalog-запуск после deploy возвращает валидный ответ |
-| `get-image-metadata` | Не подтверждён: текущее подключение сохраняет старую входную схему только с imageId и отклоняет dataProvider/zoom. Вызов только с `1053325` возвращает NOT_FOUND, хотя поиск находит снимок. Нужна повторная проверка через клиент с новой схемой и диагностика provider-scoped lookup |
+| `get-image-metadata` | ArcGIS lookup не работает: после обновления схемы вызов с `imageId=1053325`, `dataProvider=arcgis_world_imagery`, `zoom=18` по-прежнему возвращает NOT_FOUND. Причина подтверждена в upstream-провайдере, см. ниже |
 | `get-mosaic`, `get-mosaic-status` | Живые вызовы пропущены по согласованию: нет тестовой мозаики. Покрыты fixtures и MCP-тестами |
 
 Таким образом, успешно вызваны 14 из 17 инструментов; это **не** подтверждение
@@ -43,11 +43,40 @@ digest `sha256:2b194670f4eba3670ccd8438de15bdfd13ce552e801f70313e25c941719bd716`
 |---|---|---:|---|
 | `58c3fefc-28b0-4042-a8ec-3a4260cd70c2` | Buildings, Mapbox zoom 18 | 23 | OK; статистика READY, 12 объектов |
 | `4b2423a4-c4e0-42ef-a600-60a16a990847` | Roads, ArcGIS catalog zoom 18 | 8 | OK; статистика READY, 1 объект |
-| `c765a3ae-ab02-446b-ab54-93283da93aad` | Buildings, ArcGIS catalog zoom 18, Heights=false | 13 | IN_PROGRESS на момент проверки |
+| `c765a3ae-ab02-446b-ab54-93283da93aad` | Buildings, ArcGIS catalog zoom 18, Heights=false | 13 | OK; статистика READY, 8 объектов, 3019.77 м² (проверено 2026-10-27 19:12 Asia/Yerevan) |
 
 До deploy ответ запуска Roads не прошёл старую схему; задача восстановлена через
 `list-processings`, повторный платный POST не выполнялся. Списание за три запуска:
 44 кредита, совпадает с разницей баланса 9216 → 9172.
+
+### Причина ArcGIS NOT_FOUND, дополнительная проверка 2026-10-27
+
+Схема подключения обновлена; новые аргументы доходят до MCP. Это не устранило
+NOT_FOUND. Read-only диагностика развёрнутого `cg-mosaic-search:5e85613a`
+подтвердила HTTP 200 с телом `[]` непосредственно от
+`GET /api/v0/meta/1053325`, до WM и MCP.
+
+- `router/meta.py:get_image_meta` вызывает `MetaService.get_image_meta`.
+- `service/meta_service.py` вызывает `get_image_meta` у каждого включённого провайдера.
+- `service/providers/arcgis.py:ArcgisProvider` реализует только `search_meta`, но не `get_image_meta`.
+- Поэтому используется `service/providers/base.py:ProviderBase.get_image_meta`, возвращающий `[]` для неподдерживаемой операции.
+- В отличие от ArcGIS, `OrbviewProvider` реализует поиск по external ID.
+
+Доказательства: [диагностика ID lookup, job 149067](https://git.idono.work/geoalert-projects/map-flow/mapflow-platform-kubernetes/-/jobs/149067)
+и [проверка ArcGIS-провайдера, job 149068](https://git.idono.work/geoalert-projects/map-flow/mapflow-platform-kubernetes/-/jobs/149068).
+Задания выполнялись в отдельной ветке `codex/mcp-metadata-diagnostics`, без merge
+в main и без изменений deployment или пользовательских данных.
+
+Сверка свежего `mapflow-adk-agent` показывает отдельный metadata-вызов к старому
+`/rest/catalog/meta/{image_id}` и выбор снимка по уже полученной выдаче поиска.
+Клиент показывает выбранный снимок через `/catalog/{imageId}`. Успешные поиск,
+выбор и обработка не подтверждают реализацию ArcGIS lookup по ID.
+
+Необходимое исправление: реализовать `ArcgisProvider.get_image_meta` через
+существующий ArcGIS request service и mapper, проверить соответствие ID/zoom
+данным поиска и повторить вызов через OAuth MCP. Репозиторий по пути образа
+`geoalert-projects/white-maps-platform/cg-mosaic-search` недоступен через GitLab
+API и Git SSH; реализация и её выкладка пока не выполнены.
 
 ## Источники и границы проверки
 
