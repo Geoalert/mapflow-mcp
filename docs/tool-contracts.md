@@ -10,6 +10,45 @@
 - `list-processings` поддерживает сортировку `UPDATED`.
 - Геопоиск имеет тайм-аут и общую очередь Nominatim для HTTP-запросов в одном handler.
 
+### Живая проверка duty, 2026-10-27 14:54 UTC
+
+Runtime: `cfaae78bac519bb9fe379bacd159ae890a41d717`, образ `cfaae78`,
+digest `sha256:2b194670f4eba3670ccd8438de15bdfd13ce552e801f70313e25c941719bd716`.
+[Сборка 48850](https://git.idono.work/geoalert-projects/map-flow/mapflow-mcp-docker/-/pipelines/48850)
+успешна. [Deployment MR !29](https://git.idono.work/geoalert-projects/map-flow/mapflow-platform-kubernetes/-/merge_requests/29)
+слит; Helm lint, dryrun и
+[duty deploy 149054](https://git.idono.work/geoalert-projects/map-flow/mapflow-platform-kubernetes/-/jobs/149054)
+успешны. Вызовы выполнялись через OAuth-подключение к `/mcp/oauth`.
+Локальные проверки: `bun validate` и 104 теста прошли.
+
+| Инструменты | Живой результат |
+|---|---|
+| `get-limits`, `list-models`, `list-imagery-sources` | Успешные ответы аккаунта |
+| `list-projects`, `get-project` | Страница проектов; default разрешается в UUID |
+| `list-mosaics` | Успешная пустая страница, total=0 |
+| `list-processings`, `get-processing` | Читаются provider- и catalog-задачи, включая `dataProvider: null` |
+| `get-processing-statistics` | READY с группами/классами и nullable presentation fields; также COMPUTING |
+| `search-imagery-catalog` | ArcGIS, ID `1053325`, варианты zoom 17/18; backend также возвращает предупреждения о невыбранных провайдерах |
+| `get-geoboundary`, `buffer-aoi` | Геометрия и площадь с явным буфером 50 м |
+| `calculate-cost`, `start-processing` | Оценка и запуск с provider/catalog источниками; новый catalog-запуск после deploy возвращает валидный ответ |
+| `get-image-metadata` | Не подтверждён: текущее подключение сохраняет старую входную схему только с imageId и отклоняет dataProvider/zoom. Вызов только с `1053325` возвращает NOT_FOUND, хотя поиск находит снимок. Нужна повторная проверка через клиент с новой схемой и диагностика provider-scoped lookup |
+| `get-mosaic`, `get-mosaic-status` | Живые вызовы пропущены по согласованию: нет тестовой мозаики. Покрыты fixtures и MCP-тестами |
+
+Таким образом, успешно вызваны 14 из 17 инструментов; это **не** подтверждение
+полной работоспособности всех инструментов.
+
+Платные тесты разрешены пользователем. Общая AOI — около 9457 м² в Ереване:
+
+| ID обработки | Конфигурация | Кредиты | Последний результат |
+|---|---|---:|---|
+| `58c3fefc-28b0-4042-a8ec-3a4260cd70c2` | Buildings, Mapbox zoom 18 | 23 | OK; статистика READY, 12 объектов |
+| `4b2423a4-c4e0-42ef-a600-60a16a990847` | Roads, ArcGIS catalog zoom 18 | 8 | OK; статистика READY, 1 объект |
+| `c765a3ae-ab02-446b-ab54-93283da93aad` | Buildings, ArcGIS catalog zoom 18, Heights=false | 13 | IN_PROGRESS на момент проверки |
+
+До deploy ответ запуска Roads не прошёл старую схему; задача восстановлена через
+`list-processings`, повторный платный POST не выполнялся. Списание за три запуска:
+44 кредита, совпадает с разницей баланса 9216 → 9172.
+
 ## Источники и границы проверки
 
 - MCP: `main`, `9b5998a`, после fetch и fast-forward из `origin/main`.

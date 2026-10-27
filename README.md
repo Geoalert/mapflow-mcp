@@ -193,6 +193,13 @@ Duty uses the GitLab project `geoalert-projects/map-flow/mapflow-mcp-docker`
 Pin `UPSTREAM_REF` through the build's `DOCKERARGS` when triggering a release and
 verify the published SHA tag matches the source commit.
 
+With the current GitLab registry, set the pipeline variable
+`BUILDX_NO_DEFAULT_ATTESTATIONS=1`: the builder's unpinned `docker:dind` now emits
+an attestation manifest index that this registry rejects with `blob unknown`.
+This disables default provenance attestations for that build. Check both the
+`build` and `push:upstream-sha` jobs; the latter derives its tag from GitHub `main`,
+so verify that `main` still points to the pinned source before deployment.
+
 Update only `mapflowMcp.tag` in `envs/duty/mapflow.yaml` of
 `mapflow-platform-kubernetes`, merge the deployment MR, then run
 `mapflow:duty:deploy` after lint/dryrun pass. Verify the deploy job and exercise
