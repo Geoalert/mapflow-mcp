@@ -182,6 +182,40 @@ fallback for configured single-user deployments and stdio. Account caches are
 isolated by token. `MAPFLOW_BASE_URL` defaults to `https://whitemaps-staging.mapflow.ai`;
 set it explicitly for another environment.
 
+## Logging
+
+The server writes newline-delimited JSON to **stderr** using Pino. stdout is
+reserved for MCP messages in stdio mode. Set `LOG_LEVEL` to `trace`, `debug`,
+`info` (default), `warn`, `error`, `fatal`, or `silent`. An invalid value falls
+back to `info`. Completion events use `info` for success and `error` for failure.
+
+Events include `server.started`, `server.failed`, `http.completed`,
+`tool.completed`, `api.completed`, and `oauth.completed`. Request events carry
+a generated `requestId`, `durationMs`, and `outcome`; tool events also include
+the registered tool name. API events identify `upstream` (`mapflow` or
+`nominatim`), with HTTP `status` when available. Errors carry a bounded
+`errorCode`, never the original exception text.
+
+Each HTTP request gets a new ID, returned in `X-Request-Id`. The same ID follows
+its tool and API calls. Client-provided IDs are not trusted or logged. In stdio
+mode each tool call gets its own ID. Concurrent calls keep separate contexts.
+Tool completion includes SDK validation failures and unknown tool names (logged
+as `unknown`). An HTTP 200 can contain an MCP error: inspect `tool.completed`
+for the operation's outcome.
+
+```json
+{"level":"info","time":"2026-10-27T12:00:00.000Z","service":"mapflow-mcp","event":"tool.completed","requestId":"6e26726e-4580-4ed4-9b19-171e7dbd305d","tool":"get-limits","outcome":"success","durationMs":42.15}
+```
+
+Logs omit tokens, headers, request/response bodies, geometry, search strings,
+URLs, resource IDs, raw errors, stacks, and validation details. Results are
+recorded only as success/error and status codes. Nominatim no longer logs its
+search URL. `durationMs` measures server handling time, not client delivery;
+JSON API calls include parsing/validation, while raw API calls end at response
+headers. Nominatim duration includes its rate-limit wait. If stderr becomes
+unavailable, logging is best-effort and does not change operation results.
+Log collection, retention, and rotation belong to the runtime/container setup.
+
 ## Development checks
 
 ```bash

@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type {
 	ServerNotification,
 	ServerRequest,
@@ -8,6 +9,8 @@ import * as z from "zod";
 import * as api from "./api-schemas.js";
 import { bufferGeometry, geometryDetails } from "./geometry.js";
 import * as input from "./inputs.js";
+import { recordToolError } from "./logging.js";
+import { loggingTransport } from "./logging-transport.js";
 import { createMapflowClient, type MapflowClient } from "./mapflow-client.js";
 import {
 	createNominatimClient,
@@ -20,6 +23,13 @@ import {
 } from "./schemas.js";
 import { ApiError } from "./transport.js";
 
+class LoggedMcpServer extends McpServer {
+	readonly toolNames = new Set<string>();
+	override connect(transport: Transport) {
+		return super.connect(loggingTransport(transport, this.toolNames));
+	}
+}
+
 type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 export function createServer(
 	options: {
@@ -28,7 +38,7 @@ export function createServer(
 		allowEnvToken?: boolean;
 	} = {},
 ) {
-	const server = new McpServer({ name: "mapflow-mcp", version: "0.2.0" });
+	const server = new LoggedMcpServer({ name: "mapflow-mcp", version: "0.2.0" });
 	const clients = new Map<string, MapflowClient>();
 	const nominatim = options.nominatim ?? createNominatimClient();
 	const client = (extra: Extra) => {
@@ -54,6 +64,7 @@ export function createServer(
 		handler: (args: z.output<z.ZodObject<S>>, extra: Extra) => unknown,
 		behavior: "read" | "create" | "charge" = "read",
 	) {
+		server.toolNames.add(name);
 		server.registerTool<z.ZodObject, z.ZodObject<S>>(
 			name,
 			{
@@ -75,6 +86,7 @@ export function createServer(
 						structuredContent: data,
 					};
 				} catch (error) {
+					recordToolError(error);
 					const message =
 						error instanceof ApiError
 							? error.message

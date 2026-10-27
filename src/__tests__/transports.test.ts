@@ -15,6 +15,10 @@ test("stdio entrypoint initializes, lists tools and computes a buffer", async ()
 		env: { ...env, MAPFLOW_TRANSPORT: "stdio" },
 		stderr: "pipe",
 	});
+	let stderr = "";
+	transport.stderr?.on("data", (chunk) => {
+		stderr += String(chunk);
+	});
 	const client = new Client({ name: "stdio-smoke", version: "1" });
 	try {
 		await client.connect(transport);
@@ -31,6 +35,16 @@ test("stdio entrypoint initializes, lists tools and computes a buffer", async ()
 		await client.close();
 		await transport.close();
 	}
+	const logs = stderr
+		.trim()
+		.split("\n")
+		.map((line) => JSON.parse(line));
+	expect(logs.some((entry) => entry.event === "server.started")).toBe(true);
+	const tool = logs.find((entry) => entry.event === "tool.completed");
+	expect(tool).toMatchObject({ tool: "buffer-aoi", outcome: "success" });
+	expect(tool.requestId).toMatch(/^[0-9a-f-]{36}$/);
+	expect(stderr).not.toContain("smoke-token");
+	expect(stderr).not.toContain("coordinates");
 });
 test("HTTP entrypoint supports repeated requests and independent clients", async () => {
 	const reservation = Bun.serve({

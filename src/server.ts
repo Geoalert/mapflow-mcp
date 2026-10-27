@@ -1,3 +1,4 @@
+import { logEvent } from "./logging.js";
 import { createServer } from "./mcp-server.js";
 
 const transportMode = process.env.MAPFLOW_TRANSPORT ?? "stdio";
@@ -10,16 +11,15 @@ try {
 			throw new Error("MAPFLOW_BASE_URL is required with OAuth");
 		const port = Number(process.env.PORT) || 3000;
 		Bun.serve({ port, fetch: createHttpHandler(config) });
-		console.error(`HTTP server listening on port ${port}`);
+		logEvent("server.started", { outcome: "success", transport: "http" });
 	} else {
 		const { StdioServerTransport } = await import(
 			"@modelcontextprotocol/sdk/server/stdio.js"
 		);
 		await createServer().connect(new StdioServerTransport());
-		console.error("Server started (stdio)");
+		logEvent("server.started", { outcome: "success", transport: "stdio" });
 	}
-} catch (error) {
-	const message = error instanceof Error ? error.message : String(error);
-	console.error("Failed to start MCP server:", message);
+} catch {
+	logEvent("server.failed", { outcome: "error", errorCode: "STARTUP_ERROR" });
 	process.exitCode = 1;
 }

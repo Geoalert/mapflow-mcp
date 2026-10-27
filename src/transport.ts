@@ -1,4 +1,5 @@
 import type * as z from "zod";
+import { observe } from "./logging.js";
 export class ApiError extends Error {
 	constructor(
 		message: string,
@@ -22,7 +23,11 @@ export function createTransport(credentials: ApiCredentials) {
 		typeof credentials === "string"
 			? `Basic ${credentials}`
 			: `Bearer ${credentials.token}`;
-	const request = async (path: string, init?: RequestInit) => {
+	const requestRaw = async (
+		path: string,
+		init: RequestInit | undefined,
+		setStatus: (status: number) => void,
+	) => {
 		const unknownOutcome = unknownWriteOutcome(path, init);
 		const base =
 			Bun.env.MAPFLOW_BASE_URL ?? "https://whitemaps-staging.mapflow.ai";
@@ -47,6 +52,7 @@ export function createTransport(credentials: ApiCredentials) {
 				"NETWORK_ERROR",
 			);
 		}
+		setStatus(response.status);
 		if (!response.ok) {
 			await response.body?.cancel();
 			throw new ApiError(
@@ -56,30 +62,35 @@ export function createTransport(credentials: ApiCredentials) {
 		}
 		return response;
 	};
+	const request = (path: string, init?: RequestInit) =>
+		observe("api.completed", { service: "mapflow" }, (setStatus) =>
+			requestRaw(path, init, setStatus),
+		);
 	const requestJson = async <T>(
 		path: string,
 		schema: z.ZodType<T>,
 		init?: RequestInit,
-	): Promise<T> => {
-		const response = await request(path, init);
-		const unknownOutcome = unknownWriteOutcome(path, init);
-		let data: unknown;
-		try {
-			data = await response.json();
-		} catch {
-			throw new ApiError(
-				unknownOutcome ?? "Mapflow API returned invalid JSON",
-				"INVALID_RESPONSE",
-			);
-		}
-		const parsed = schema.safeParse(data);
-		if (!parsed.success)
-			throw new ApiError(
-				unknownOutcome ?? "Mapflow API returned an unexpected response shape",
-				"INVALID_RESPONSE",
-			);
-		return parsed.data;
-	};
+	): Promise<T> =>
+		observe("api.completed", { service: "mapflow" }, async (setStatus) => {
+			const response = await requestRaw(path, init, setStatus);
+			const unknownOutcome = unknownWriteOutcome(path, init);
+			let data: unknown;
+			try {
+				data = await response.json();
+			} catch {
+				throw new ApiError(
+					unknownOutcome ?? "Mapflow API returned invalid JSON",
+					"INVALID_RESPONSE",
+				);
+			}
+			const parsed = schema.safeParse(data);
+			if (!parsed.success)
+				throw new ApiError(
+					unknownOutcome ?? "Mapflow API returned an unexpected response shape",
+					"INVALID_RESPONSE",
+				);
+			return parsed.data;
+		});
 	const post = <T>(path: string, schema: z.ZodType<T>, body: unknown) =>
 		requestJson(path, schema, {
 			method: "POST",
