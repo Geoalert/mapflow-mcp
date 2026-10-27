@@ -256,6 +256,12 @@ describe("mapflowDataProviderPriceSchema", () => {
 });
 
 describe("mapflowDataProviderSchema", () => {
+	test("rejects invalid preview types", () => {
+		for (const provider of [{ previewUrl: 123 }, { previewUrlMaxZoom: "18" }]) {
+			expect(mapflowDataProviderSchema.safeParse(provider).success).toBe(false);
+		}
+	});
+
 	test("validates complete data provider", () => {
 		const validProvider = {
 			id: "550e8400-e29b-41d4-a716-446655440000",

@@ -43,8 +43,8 @@ export const mapflowDataProviderSchema = z
 		id: z.uuid().optional(),
 		name: z.string().optional(),
 		displayName: z.string().optional(),
-		previewUrl: z.string().optional(),
-		previewUrlMaxZoom: z.number().optional(),
+		previewUrl: z.string().nullish(),
+		previewUrlMaxZoom: z.number().nullish(),
 		price: z.array(mapflowDataProviderPriceSchema).optional(),
 	})
 	.catchall(z.unknown());

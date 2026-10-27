@@ -4,7 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import * as z from "zod";
 import { createMapflowClient } from "../mapflow-client.js";
 import { createServer } from "../mcp-server.js";
-import { apiFixture, geometry, id } from "./fixtures.js";
+import { apiFixture, geometry, id, user } from "./fixtures.js";
 
 const originalFetch = globalThis.fetch;
 let client: Client;
@@ -89,6 +89,25 @@ const calls: [string, Record<string, unknown>][] = [
 		},
 	],
 ];
+test("account tools accept nullable provider previews in user status", async () => {
+	const dataProviders = [
+		{ name: "Google", previewUrlMaxZoom: null },
+		{ name: "Maps_gov_il", previewUrl: null, previewUrlMaxZoom: null },
+	];
+	responseOverride = (url) =>
+		url.pathname === "/rest/user/status"
+			? Response.json({ ...user, dataProviders })
+			: undefined;
+	for (const [name, expected] of [
+		["get-limits", { remainingCredits: user.remainingCredits }],
+		["list-models", { models: user.models }],
+		["list-imagery-sources", { imagerySources: dataProviders }],
+	] as const) {
+		const result = await client.callTool({ name, arguments: {} });
+		expect(result.isError).not.toBe(true);
+		expect(result.structuredContent).toMatchObject(expected);
+	}
+});
 test("discovery publishes numeric coordinate arrays while runtime rejects invalid positions", async () => {
 	const { tools } = await client.listTools();
 	let positions = 0;
