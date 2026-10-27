@@ -16,6 +16,7 @@ export type NominatimClient = {
 
 export function createNominatimClient(): NominatimClient {
 	let lastRequestTime = 0;
+	let nextRequest = Promise.resolve();
 
 	const rateLimit = async (): Promise<void> => {
 		const now = Date.now();
@@ -30,7 +31,9 @@ export function createNominatimClient(): NominatimClient {
 	const searchBoundary = async (
 		query: string,
 	): Promise<NominatimResult | null> => {
-		await rateLimit();
+		const turn = nextRequest.then(rateLimit);
+		nextRequest = turn.catch(() => {});
+		await turn;
 
 		const url = new URL("/search", baseUrl);
 		url.searchParams.set("q", query);
@@ -41,6 +44,7 @@ export function createNominatimClient(): NominatimClient {
 		console.error(`[nominatim] Fetching: ${url.toString()}`);
 
 		const response = await fetch(url, {
+			signal: AbortSignal.timeout(30_000),
 			headers: {
 				"User-Agent": userAgent,
 				Accept: "application/json",

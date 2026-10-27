@@ -27,7 +27,7 @@ export const processingSummarySchema = z.object({
 	projectId: z.uuid().optional(),
 	status: z.string(),
 	percentCompleted: z.number().optional(),
-	cost: z.number().optional(),
+	cost: z.number().nullish(),
 	area: z.number().optional(),
 	created: z.string().optional(),
 	updated: z.string().optional(),
@@ -130,6 +130,8 @@ export const catalogResponseSchema = z.object({
 });
 export const statisticsRowSchema = z.object({
 	key: z.string(),
+	displayName: z.string().nullish(),
+	color: z.string().nullish(),
 	count,
 	area: nullableNumber,
 	length: nullableNumber,
@@ -146,6 +148,8 @@ export const statisticsSchema = z.object({
 	groups: z.array(
 		statisticsRowSchema.extend({
 			geometryType: z.string().nullable(),
+			metric: z.enum(["count", "area", "length"]).nullish(),
+			order: z.number().int().nullish(),
 			classes: z.array(statisticsRowSchema).nullish(),
 		}),
 	),
@@ -169,6 +173,8 @@ export const statisticsOutputSchema = statisticsSchema
 		groups: z.array(
 			rowOutput.extend({
 				geometryType: z.string().nullable(),
+				metric: z.enum(["count", "area", "length"]).nullish(),
+				order: z.number().int().nullish(),
 				classes: z.array(rowOutput),
 			}),
 		),

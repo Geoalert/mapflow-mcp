@@ -1,8 +1,8 @@
-import type * as z from "zod";
+import * as z from "zod";
 import * as api from "./api-schemas.js";
 import { parseFootprint } from "./geometry.js";
 import * as input from "./inputs.js";
-import type { ApiTransport } from "./transport.js";
+import { ApiError, type ApiTransport } from "./transport.js";
 
 function page<T>(items: T[], total: number, limit: number, offset: number) {
 	return {
@@ -165,11 +165,41 @@ export function createReadClient(http: ApiTransport) {
 				providerErrors: data.errors ?? null,
 			};
 		},
-		getImageMetadata(imageId: string) {
-			return http.requestJson(
-				`/rest/catalog/meta/${encodeURIComponent(imageId)}`,
-				api.catalogImageSchema,
+		async getImageMetadata(args: z.input<typeof input.imageMetadataSchema>) {
+			const { imageId, dataProvider, zoom } =
+				input.imageMetadataSchema.parse(args);
+			if (dataProvider === "maxar")
+				return http.requestJson(
+					`/rest/catalog/meta/${encodeURIComponent(imageId)}`,
+					api.catalogImageSchema,
+				);
+			const provider = dataProvider?.startsWith("orbview")
+				? "orbview"
+				: dataProvider === "arcgis_world_imagery" ||
+						dataProvider?.startsWith("CG_mosaic_")
+					? "cgmosaic"
+					: dataProvider;
+			const query = new URLSearchParams();
+			if (provider) query.set("provider_name", provider);
+			const images = await http.requestJson(
+				`/rest/catalog/${encodeURIComponent(imageId)}${query.size ? `?${query}` : ""}`,
+				z.array(api.catalogImageSchema),
 			);
+			const matches = images.filter(
+				(image) =>
+					image.id === imageId && (zoom === undefined || image.zoom === zoom),
+			);
+			if (matches.length === 0)
+				throw new ApiError(
+					"No catalog image matches the requested ID and zoom",
+					"NOT_FOUND",
+				);
+			if (matches.length !== 1)
+				throw new ApiError(
+					"Multiple catalog images match; specify dataProvider and zoom from search-imagery-catalog",
+					"AMBIGUOUS_IMAGE",
+				);
+			return matches[0];
 		},
 	};
 }

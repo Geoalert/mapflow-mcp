@@ -1,10 +1,12 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMapflowClient } from "./mapflow-client.js";
 import { createServer } from "./mcp-server.js";
+import { createNominatimClient } from "./nominatim-client.js";
 import { createOAuth, type OAuthConfig, OAuthError } from "./oauth.js";
 
 export function createHttpHandler(config?: OAuthConfig) {
 	const oauth = config ? createOAuth(config) : undefined;
+	const nominatim = createNominatimClient();
 	return async (req: Request): Promise<Response> => {
 		const url = new URL(req.url);
 		const origin = req.headers.get("origin");
@@ -46,8 +48,12 @@ export function createHttpHandler(config?: OAuthConfig) {
 		const authenticatedClient = client;
 		const server = createServer(
 			authenticatedClient
-				? { getClient: () => authenticatedClient, allowEnvToken: false }
-				: {},
+				? {
+						getClient: () => authenticatedClient,
+						allowEnvToken: false,
+						nominatim,
+					}
+				: { nominatim },
 		);
 		const transport = new WebStandardStreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,

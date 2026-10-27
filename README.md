@@ -124,6 +124,13 @@ Inputs use camelCase. Lists default to `limit: 20`, `offset: 0` (limit 1–100).
 AOIs must be valid WGS84 Polygon/MultiPolygon geometries. Points and lines from
 geocoding require an explicit positive `bufferMeters`.
 
+For `get-image-metadata`, pass `imageId`, `dataProvider` and, when available,
+`zoom` from the catalog search result. The server uses the multi-provider
+`/rest/catalog/{imageId}` route and rejects ambiguous matches instead of silently
+selecting a different zoom. `dataProvider: "maxar"` selects the legacy Maxar-only
+metadata endpoint. Statistics preserve nullable geometry types for empty groups
+and the backend's display names, colors, metrics and ordering.
+
 Both cost and launch accept a `source`:
 
 ```json
@@ -176,6 +183,21 @@ bun test
 Tests use API fixtures, real MCP client/server calls, and subprocess smoke tests
 for stdio and HTTP. The HTTP smoke test binds a loopback port. Tests do not start
 paid Mapflow jobs or require live credentials.
+
+## Duty deployment
+
+A push to GitHub `main` builds GHCR images; it does **not** update duty.
+Duty uses the GitLab project `geoalert-projects/map-flow/mapflow-mcp-docker`
+(project 476), whose pipeline builds this repository and publishes
+`registry.idono.work/geoalert-projects/map-flow/mapflow-mcp-docker:<upstream-sha>`.
+Pin `UPSTREAM_REF` through the build's `DOCKERARGS` when triggering a release and
+verify the published SHA tag matches the source commit.
+
+Update only `mapflowMcp.tag` in `envs/duty/mapflow.yaml` of
+`mapflow-platform-kubernetes`, merge the deployment MR, then run
+`mapflow:duty:deploy` after lint/dryrun pass. Verify the deploy job and exercise
+`https://mapflow-mcp-duty.mapflow.ai/mcp/oauth` through an authenticated connection.
+Local tests or a successful image build alone do not confirm deployment.
 
 ## Getting a Token
 

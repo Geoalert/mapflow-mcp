@@ -188,10 +188,10 @@ export function createServer(
 	);
 	register(
 		"get-image-metadata",
-		"Get catalog image metadata by opaque image ID, not a My Imagery image UUID.",
+		"Get catalog image metadata by opaque image ID. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. Use dataProvider=maxar only for the legacy Maxar catalog.",
 		input.imageMetadataSchema,
 		api.catalogImageSchema,
-		(a, e) => client(e).getImageMetadata(a.imageId),
+		(a, e) => client(e).getImageMetadata(a),
 	);
 	register(
 		"get-geoboundary",

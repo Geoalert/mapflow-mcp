@@ -92,4 +92,28 @@ describe("NominatimClient rate limiting", () => {
 
 		expect(result).toBeNull();
 	});
+
+	test("spaces concurrent requests and recovers after a failed request", async () => {
+		const starts: number[] = [];
+		mockFetch.mockImplementation(() => {
+			starts.push(Date.now());
+			return Promise.resolve(
+				new Response("[]", { status: starts.length === 1 ? 503 : 200 }),
+			);
+		});
+		const client = createNominatimClient();
+		const results = await Promise.allSettled([
+			client.searchBoundary("first"),
+			client.searchBoundary("second"),
+			client.searchBoundary("third"),
+		]);
+		expect(results.map((result) => result.status)).toEqual([
+			"rejected",
+			"fulfilled",
+			"fulfilled",
+		]);
+		const [first = 0, second = 0, third = 0] = starts;
+		expect(second - first).toBeGreaterThanOrEqual(950);
+		expect(third - second).toBeGreaterThanOrEqual(950);
+	});
 });

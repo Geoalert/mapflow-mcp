@@ -112,5 +112,6 @@ export function apiFixture(url: URL): unknown {
 			errors: [{ providerName: "orbview", message: "temporarily unavailable" }],
 		};
 	if (path.startsWith("/rest/catalog/meta/")) return image;
+	if (path.startsWith("/rest/catalog/")) return [image];
 	throw new Error(`Unexpected test route: ${path}`);
 }

@@ -180,6 +180,7 @@ export const listProcessingsSchema = z
 			.enum([
 				"NAME",
 				"CREATED",
+				"UPDATED",
 				"COMPLETED",
 				"STATUS",
 				"PROGRESS",
@@ -245,7 +246,11 @@ export const searchCatalogSchema = z
 		if (from && to && Date.parse(from) > Date.parse(to))
 			ctx.addIssue({ code: "custom", message: "Date range is reversed" });
 	});
-export const imageMetadataSchema = z.strictObject({ imageId: text });
+export const imageMetadataSchema = z.strictObject({
+	imageId: text,
+	dataProvider: z.enum([...searchProviders, "maxar"]).optional(),
+	zoom,
+});
 export const geoboundarySchema = z.strictObject({
 	query: text,
 	bufferMeters: z.number().nonnegative().optional(),

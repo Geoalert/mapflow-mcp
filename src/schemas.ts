@@ -16,7 +16,7 @@ export const mapflowModelSchema = z
 		description: z.string().nullable().optional(),
 		created: z.string().optional(),
 		updated: z.string().optional(),
-		pricePerSqKm: z.number().optional(),
+		pricePerSqKm: z.number().nullish(),
 		blocks: z.array(mapflowModelBlockSchema).optional(),
 	})
 	.catchall(z.unknown());
@@ -108,13 +108,13 @@ export const mapflowDataProviderResponseSchema = z
 	.object({
 		providerName: z.string().optional(),
 		name: z.string().optional(),
-		zoom: z.number().optional(),
+		zoom: z.number().nullish(),
 	})
 	.catchall(z.unknown());
 
 export const mapflowSourceParamsSchema = z
 	.object({
-		dataProvider: mapflowDataProviderResponseSchema.optional(),
+		dataProvider: mapflowDataProviderResponseSchema.nullish(),
 	})
 	.catchall(z.unknown());
 
@@ -140,7 +140,7 @@ export const mapflowReviewStatusSchema = z
 export const mapflowRatingSchema = z
 	.object({
 		rating: z.number().optional(),
-		feedback: z.string().optional(),
+		feedback: z.string().nullish(),
 	})
 	.catchall(z.unknown());
 
@@ -173,12 +173,12 @@ export const mapflowProcessingSchema = z
 		aoiCount: z.number().optional(),
 		aoiArea: z.number().optional(),
 		area: z.number().optional(),
-		cost: z.number().optional(),
+		cost: z.number().nullish(),
 		status: z.string().optional(),
 		reviewStatus: mapflowReviewStatusSchema.nullable().optional(),
 		rating: mapflowRatingSchema.nullable().optional(),
 		percentCompleted: z.number().optional(),
-		params: mapflowProcessingParamsSchema.optional(),
+		params: mapflowProcessingParamsSchema.nullish(),
 		blocks: z.array(mapflowProcessingBlockSchema).optional(),
 		meta: z.record(z.string(), z.unknown()).optional(),
 		messages: z.array(z.unknown()).optional(),

@@ -4,7 +4,15 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import * as z from "zod";
 import { createMapflowClient } from "../mapflow-client.js";
 import { createServer } from "../mcp-server.js";
-import { apiFixture, geometry, id, statistics, user } from "./fixtures.js";
+import {
+	apiFixture,
+	geometry,
+	id,
+	image,
+	processing,
+	statistics,
+	user,
+} from "./fixtures.js";
 
 const originalFetch = globalThis.fetch;
 let client: Client;
@@ -264,6 +272,125 @@ test("source conflict, numeric inference, unknown parameters and reversed dates 
 		);
 	expect(requests).toHaveLength(0);
 });
+for (const params of [
+	null,
+	{
+		sourceParams: {
+			dataProvider: null,
+			imagerySearch: {
+				dataProvider: "arcgis_world_imagery",
+				imageIds: ["1053325"],
+				zoom: null,
+			},
+			myImagery: null,
+			userDefined: null,
+		},
+		inferenceParams: null,
+	},
+	{
+		sourceParams: { dataProvider: { providerName: "Mapbox", zoom: null } },
+		inferenceParams: null,
+	},
+	{
+		sourceParams: {
+			dataProvider: null,
+			myImagery: { mosaicId: id, imageIds: null },
+		},
+		inferenceParams: null,
+	},
+])
+	test(`processing tools accept backend nullable fields: ${JSON.stringify(params)}`, async () => {
+		const value = {
+			...processing,
+			cost: null,
+			params,
+			rating: { rating: 5, feedback: null },
+		};
+		responseOverride = (url) => {
+			if (url.pathname.endsWith("/processings/v2/page"))
+				return Response.json({ results: [value], count: 1, total: 1 });
+			if (url.pathname.startsWith("/rest/processings"))
+				return Response.json(value);
+			return undefined;
+		};
+		for (const [name, args] of [
+			["get-processing", { processingId: id }],
+			["list-processings", { projectId: id }],
+			[
+				"start-processing",
+				{
+					name: "Test",
+					wdName: "Buildings",
+					geometry,
+					source: { type: "provider", name: "Mapbox" },
+				},
+			],
+		] as [string, Record<string, unknown>][]) {
+			const result = await client.callTool({ name, arguments: args });
+			expect(result.isError).not.toBe(true);
+			expect(result.structuredContent).toMatchObject(
+				name === "list-processings"
+					? {
+							items: [
+								{ id, cost: null, imagery: params?.sourceParams ?? null },
+							],
+						}
+					: { id, cost: null, params, rating: { feedback: null } },
+			);
+		}
+	});
+
+test("catalog metadata uses provider routing and explicit zoom without losing other variants", async () => {
+	responseOverride = () =>
+		Response.json([
+			{ ...image, zoom: 17 },
+			{ ...image, zoom: 18 },
+		]);
+	for (const [dataProvider, expectedProvider] of [
+		["arcgis_world_imagery", "cgmosaic"],
+		["CG_mosaic_2022", "cgmosaic"],
+		["orbview_sv1", "orbview"],
+		["roscosmos", "roscosmos"],
+		["skywatch_spot", "skywatch_spot"],
+	]) {
+		const result = await client.callTool({
+			name: "get-image-metadata",
+			arguments: { imageId: image.id, dataProvider, zoom: 18 },
+		});
+		expect(result.isError).not.toBe(true);
+		expect(result.structuredContent).toMatchObject({ id: image.id, zoom: 18 });
+		expect(requests.at(-1)?.url.pathname).toBe(
+			`/rest/catalog/${encodeURIComponent(image.id)}`,
+		);
+		expect(requests.at(-1)?.url.searchParams.get("provider_name")).toBe(
+			expectedProvider ?? null,
+		);
+	}
+	const ambiguous = await client.callTool({
+		name: "get-image-metadata",
+		arguments: { imageId: image.id },
+	});
+	expect(ambiguous.isError).toBe(true);
+	expect(JSON.stringify(ambiguous.content)).toContain("AMBIGUOUS_IMAGE");
+	const missing = await client.callTool({
+		name: "get-image-metadata",
+		arguments: { imageId: image.id, zoom: 19 },
+	});
+	expect(missing.isError).toBe(true);
+	expect(JSON.stringify(missing.content)).toContain("NOT_FOUND");
+});
+
+test("Maxar metadata remains explicitly available on its legacy endpoint", async () => {
+	const result = await client.callTool({
+		name: "get-image-metadata",
+		arguments: { imageId: image.id, dataProvider: "maxar" },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(requests[0]?.url.pathname).toBe(
+		`/rest/catalog/meta/${encodeURIComponent(image.id)}`,
+	);
+});
+
 test("statistics preserve empty groups with null geometryType alongside measured groups", async () => {
 	responseOverride = () =>
 		Response.json({
@@ -277,6 +404,10 @@ test("statistics preserve empty groups with null geometryType alongside measured
 					area: null,
 					length: null,
 					classes: null,
+					displayName: "Empty buildings",
+					color: "#112233",
+					metric: "area",
+					order: 2,
 				},
 			],
 		});
@@ -299,6 +430,10 @@ test("statistics preserve empty groups with null geometryType alongside measured
 				lengthM: null,
 				lengthKm: null,
 				classes: [],
+				displayName: "Empty buildings",
+				color: "#112233",
+				metric: "area",
+				order: 2,
 			},
 		],
 	});
