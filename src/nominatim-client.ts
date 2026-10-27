@@ -1,8 +1,10 @@
 import type * as z from "zod";
+import { observe } from "./logging.js";
 import {
 	type nominatimResultSchema,
 	nominatimSearchResponseSchema,
 } from "./schemas.js";
+import { ApiError } from "./transport.js";
 
 const baseUrl = "https://nominatim.openstreetmap.org";
 const userAgent = "mapflow-mcp/0.1.0";
@@ -30,43 +32,42 @@ export function createNominatimClient(): NominatimClient {
 
 	const searchBoundary = async (
 		query: string,
-	): Promise<NominatimResult | null> => {
-		const turn = nextRequest.then(rateLimit);
-		nextRequest = turn.catch(() => {});
-		await turn;
+	): Promise<NominatimResult | null> =>
+		observe("api.completed", { service: "nominatim" }, async (setStatus) => {
+			const turn = nextRequest.then(rateLimit);
+			nextRequest = turn.catch(() => {});
+			await turn;
 
-		const url = new URL("/search", baseUrl);
-		url.searchParams.set("q", query);
-		url.searchParams.set("format", "json");
-		url.searchParams.set("polygon_geojson", "1");
-		url.searchParams.set("limit", "1");
+			const url = new URL("/search", baseUrl);
+			url.searchParams.set("q", query);
+			url.searchParams.set("format", "json");
+			url.searchParams.set("polygon_geojson", "1");
+			url.searchParams.set("limit", "1");
 
-		console.error(`[nominatim] Fetching: ${url.toString()}`);
+			const response = await fetch(url, {
+				signal: AbortSignal.timeout(30_000),
+				headers: {
+					"User-Agent": userAgent,
+					Accept: "application/json",
+				},
+			});
 
-		const response = await fetch(url, {
-			signal: AbortSignal.timeout(30_000),
-			headers: {
-				"User-Agent": userAgent,
-				Accept: "application/json",
-			},
-		});
+			setStatus(response.status);
+			if (!response.ok) {
+				await response.body?.cancel();
+				throw new ApiError(
+					`Nominatim API request failed: ${response.status}`,
+					`HTTP_${response.status}`,
+				);
+			}
 
-		if (!response.ok) {
-			const body = await response.text();
-			throw new Error(
-				`Nominatim API request failed: ${response.status} ${response.statusText}${
-					body ? ` - ${body}` : ""
-				}`,
+			const rawBody = await response.text();
+			const results = nominatimSearchResponseSchema.parse(
+				rawBody ? JSON.parse(rawBody) : [],
 			);
-		}
 
-		const rawBody = await response.text();
-		const results = nominatimSearchResponseSchema.parse(
-			rawBody ? JSON.parse(rawBody) : [],
-		);
-
-		return results[0] ?? null;
-	};
+			return results[0] ?? null;
+		});
 
 	return {
 		searchBoundary,
