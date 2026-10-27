@@ -1,10 +1,15 @@
 import type * as z from "zod";
-import { costDetailsSchema, processingSchema } from "./api-schemas.js";
+import {
+	costDetailsSchema,
+	processingSchema,
+	projectSchema,
+} from "./api-schemas.js";
 import {
 	type CalculateCostRequest,
 	type CreateProcessingRequest,
 	calculateCostRequestSchema,
 	createProcessingRequestSchema,
+	createProjectSchema,
 } from "./inputs.js";
 import { buildParams, resolveSource } from "./processing-source.js";
 import { createReadClient } from "./read-client.js";
@@ -53,6 +58,13 @@ export function createMapflowClient(token: ApiCredentials) {
 	return {
 		...http,
 		...reads,
+		createProject(args: z.input<typeof createProjectSchema>) {
+			return http.post(
+				"/rest/projects",
+				projectSchema,
+				createProjectSchema.parse(args),
+			);
+		},
 		fetchUserStatus,
 		getCachedUserStatus,
 		async getModels() {

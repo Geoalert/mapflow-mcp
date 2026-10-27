@@ -52,7 +52,7 @@ export function createServer(
 		schema: z.ZodObject<S>,
 		output: z.ZodObject,
 		handler: (args: z.output<z.ZodObject<S>>, extra: Extra) => unknown,
-		write = false,
+		behavior: "read" | "create" | "charge" = "read",
 	) {
 		server.registerTool<z.ZodObject, z.ZodObject<S>>(
 			name,
@@ -61,9 +61,9 @@ export function createServer(
 				inputSchema: schema,
 				outputSchema: output,
 				annotations: {
-					readOnlyHint: !write,
-					destructiveHint: write,
-					idempotentHint: !write,
+					readOnlyHint: behavior === "read",
+					destructiveHint: behavior === "charge",
+					idempotentHint: behavior === "read",
 					openWorldHint: name !== "buffer-aoi",
 				},
 			},
@@ -127,6 +127,14 @@ export function createServer(
 		input.listProjectsSchema,
 		api.pageOutputSchema(api.projectSchema.omit({ workflowDefs: true })),
 		(a, e) => client(e).listProjects(a),
+	);
+	register(
+		"create-project",
+		"Create a project with a name and optional description. Returns its ID for start-processing.projectId. Creates a new project on every call; on an unknown outcome check list-projects before retrying.",
+		input.createProjectSchema,
+		api.projectSchema,
+		(a, e) => client(e).createProject(a),
+		"create",
 	);
 	register(
 		"get-project",
@@ -250,7 +258,7 @@ export function createServer(
 		input.createProcessingRequestSchema,
 		api.processingSchema.extend({ warnings: z.array(z.string()) }),
 		(a, e) => client(e).createProcessing(a),
-		true,
+		"charge",
 	);
 	return server;
 }

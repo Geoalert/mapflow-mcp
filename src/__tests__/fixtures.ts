@@ -94,6 +94,7 @@ export function apiFixture(url: URL): unknown {
 	if (path === "/rest/user/status") return user;
 	if (path === "/rest/projects/page")
 		return { results: [project], total: 1, count: 1 };
+	if (path === "/rest/projects") return { ...project, isDefault: false };
 	if (path.endsWith("/processings/v2/page"))
 		return { results: [processing], total: 1, count: 1 };
 	if (path.startsWith("/rest/projects/")) return project;

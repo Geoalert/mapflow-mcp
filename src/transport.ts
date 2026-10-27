@@ -8,8 +8,14 @@ export class ApiError extends Error {
 	}
 }
 export type ApiTransport = ReturnType<typeof createTransport>;
-const unknownOutcome =
-	"Processing request outcome is unknown. Check list-processings before retrying; do not automatically repeat the charge.";
+function unknownWriteOutcome(path: string, init?: RequestInit) {
+	if (init?.method !== "POST") return undefined;
+	if (path === "/rest/processings/v2")
+		return "Processing request outcome is unknown. Check list-processings before retrying; do not automatically repeat the charge.";
+	if (path === "/rest/projects")
+		return "Project creation outcome is unknown. Check list-projects for the requested name before retrying; do not automatically create a duplicate.";
+	return undefined;
+}
 export type ApiCredentials = string | { scheme: "Bearer"; token: string };
 export function createTransport(credentials: ApiCredentials) {
 	const authorization =
@@ -17,6 +23,7 @@ export function createTransport(credentials: ApiCredentials) {
 			? `Basic ${credentials}`
 			: `Bearer ${credentials.token}`;
 	const request = async (path: string, init?: RequestInit) => {
+		const unknownOutcome = unknownWriteOutcome(path, init);
 		const base =
 			Bun.env.MAPFLOW_BASE_URL ?? "https://whitemaps-staging.mapflow.ai";
 		const url = new URL(path, base);
@@ -36,16 +43,14 @@ export function createTransport(credentials: ApiCredentials) {
 			});
 		} catch {
 			throw new ApiError(
-				init?.method === "POST" && path === "/rest/processings/v2"
-					? unknownOutcome
-					: "Mapflow API network error or timeout",
+				unknownOutcome ?? "Mapflow API network error or timeout",
 				"NETWORK_ERROR",
 			);
 		}
 		if (!response.ok) {
 			await response.body?.cancel();
 			throw new ApiError(
-				`Mapflow API request failed: ${response.status}${init?.method === "POST" && path === "/rest/processings/v2" && response.status >= 500 ? `. ${unknownOutcome}` : ""}`,
+				`Mapflow API request failed: ${response.status}${unknownOutcome && response.status >= 500 ? `. ${unknownOutcome}` : ""}`,
 				`HTTP_${response.status}`,
 			);
 		}
@@ -57,22 +62,20 @@ export function createTransport(credentials: ApiCredentials) {
 		init?: RequestInit,
 	): Promise<T> => {
 		const response = await request(path, init);
-		const isLaunch = init?.method === "POST" && path === "/rest/processings/v2";
+		const unknownOutcome = unknownWriteOutcome(path, init);
 		let data: unknown;
 		try {
 			data = await response.json();
 		} catch {
 			throw new ApiError(
-				isLaunch ? unknownOutcome : "Mapflow API returned invalid JSON",
+				unknownOutcome ?? "Mapflow API returned invalid JSON",
 				"INVALID_RESPONSE",
 			);
 		}
 		const parsed = schema.safeParse(data);
 		if (!parsed.success)
 			throw new ApiError(
-				isLaunch
-					? unknownOutcome
-					: "Mapflow API returned an unexpected response shape",
+				unknownOutcome ?? "Mapflow API returned an unexpected response shape",
 				"INVALID_RESPONSE",
 			);
 		return parsed.data;

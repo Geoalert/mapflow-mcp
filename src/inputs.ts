@@ -141,6 +141,10 @@ export const listProjectsSchema = z.strictObject({
 export const getProjectSchema = z.strictObject({
 	projectId: z.union([z.uuid(), z.literal("default")]),
 });
+export const createProjectSchema = z.strictObject({
+	name: text.max(128),
+	description: z.string().max(1024).optional(),
+});
 export const listMosaicsSchema = z.strictObject({
 	...pagination,
 	nameContains: text.max(255).optional(),

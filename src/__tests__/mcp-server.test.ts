@@ -17,7 +17,12 @@ import {
 const originalFetch = globalThis.fetch;
 let client: Client;
 let server: ReturnType<typeof createServer>;
-let requests: { url: URL; body: unknown; headers: RequestInit["headers"] }[];
+let requests: {
+	url: URL;
+	method: string;
+	body: unknown;
+	headers: RequestInit["headers"];
+}[];
 let responseOverride: ((url: URL) => Response | undefined) | undefined;
 beforeEach(async () => {
 	requests = [];
@@ -27,6 +32,7 @@ beforeEach(async () => {
 			const u = new URL(String(url));
 			requests.push({
 				url: u,
+				method: init?.method ?? "GET",
 				body: init?.body ? JSON.parse(String(init.body)) : undefined,
 				headers: init?.headers,
 			});
@@ -61,6 +67,7 @@ const calls: [string, Record<string, unknown>][] = [
 	["list-imagery-sources", {}],
 	["get-limits", {}],
 	["list-projects", { query: "Test" }],
+	["create-project", { name: " Test project ", description: "MCP test" }],
 	["get-project", { projectId: "default" }],
 	["list-mosaics", { tags: ["one", "two"], nameContains: "Upload" }],
 	["get-mosaic", { mosaicId: id }],
@@ -151,14 +158,17 @@ test("discovery publishes numeric coordinate arrays while runtime rejects invali
 	}
 	expect(requests).toHaveLength(0);
 });
-test("tools/list exposes exactly the 17 tools and output schemas, with only start as a write", async () => {
+test("tools/list exposes 18 tools, with creation and processing as non-idempotent writes", async () => {
 	const { tools } = await client.listTools();
 	expect(tools.map((t) => t.name).sort()).toEqual(
 		calls.map((c) => c[0]).sort(),
 	);
 	for (const t of tools) {
 		expect(t.outputSchema?.type).toBe("object");
-		expect(t.annotations?.readOnlyHint).toBe(t.name !== "start-processing");
+		const write = ["start-processing", "create-project"].includes(t.name);
+		expect(t.annotations?.readOnlyHint).toBe(!write);
+		expect(t.annotations?.idempotentHint).toBe(!write);
+		expect(t.annotations?.destructiveHint).toBe(t.name === "start-processing");
 	}
 	expect(
 		tools.some(
@@ -181,6 +191,24 @@ for (const [name, args] of calls)
 				limit: 20,
 				sortBy: "UPDATED",
 			});
+		}
+		if (name === "create-project") {
+			expect(requests).toHaveLength(1);
+			expect(requests[0]?.method).toBe("POST");
+			expect(requests[0]?.url.pathname).toBe("/rest/projects");
+			expect(requests[0]?.body).toEqual({
+				name: "Test project",
+				description: "MCP test",
+			});
+			expect(new Headers(requests[0]?.headers).get("Authorization")).toBe(
+				"Basic test-token",
+			);
+			expect(data).toMatchObject({
+				id,
+				name: "Test project",
+				isDefault: false,
+			});
+			expect(JSON.stringify(data)).not.toContain("private@example.com");
 		}
 		if (name === "list-mosaics") {
 			expect(requests[0]?.url.searchParams.getAll("tags")).toEqual([
@@ -222,6 +250,57 @@ for (const [name, args] of calls)
 				unit: "credits",
 				preliminary: false,
 			});
+	});
+test("project creation accepts backend length limits and an omitted description", async () => {
+	for (const args of [
+		{ name: "New project" },
+		{ name: "x".repeat(128), description: "x".repeat(1024) },
+	]) {
+		const result = await client.callTool({
+			name: "create-project",
+			arguments: args,
+		});
+		expect(result.isError).not.toBe(true);
+		expect(requests.at(-1)?.body).toEqual(args);
+	}
+});
+test("project creation rejects invalid input before making any REST request", async () => {
+	for (const args of [
+		{},
+		{ name: "   " },
+		{ name: "x".repeat(129) },
+		{ name: "New", description: "x".repeat(1025) },
+		{ name: "New", description: 123 },
+		{ name: "New", ownerId: id },
+	]) {
+		const result = await client.callTool({
+			name: "create-project",
+			arguments: args,
+		});
+		expect(result.isError).toBe(true);
+	}
+	expect(requests).toHaveLength(0);
+});
+for (const failure of ["network", "server", "json", "schema"] as const)
+	test(`project creation ${failure} failure reports unknown outcome without retrying`, async () => {
+		responseOverride = () => {
+			if (failure === "network") throw new Error("secret upstream details");
+			if (failure === "server")
+				return new Response("secret upstream details", { status: 500 });
+			if (failure === "json") return new Response("secret upstream details");
+			return Response.json({ message: "secret upstream details" });
+		};
+		const result = await client.callTool({
+			name: "create-project",
+			arguments: { name: "New" },
+		});
+		expect(result.isError).toBe(true);
+		expect(requests).toHaveLength(1);
+		expect(JSON.stringify(result.content)).toContain(
+			"Project creation outcome is unknown",
+		);
+		expect(JSON.stringify(result.content)).toContain("list-projects");
+		expect(JSON.stringify(result)).not.toContain("secret upstream");
 	});
 test("HTTP errors and malformed successful responses become isError without response body leakage", async () => {
 	responseOverride = () =>

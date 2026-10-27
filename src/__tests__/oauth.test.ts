@@ -264,48 +264,70 @@ test("OAuth configuration is opt-in and rejects partial or insecure configuratio
 	).toThrow();
 });
 
-test("OAuth tool call reaches user status with the exchanged Bearer token", async () => {
-	const f = await fixture();
-	const previousBase = process.env.MAPFLOW_BASE_URL;
-	let seen = "";
-	const backend = Bun.serve({
-		port: 0,
-		hostname: "127.0.0.1",
-		fetch(req) {
-			expect(new URL(req.url).pathname).toBe("/rest/user/status");
-			seen = req.headers.get("authorization") ?? "";
-			return Response.json({ remainingCredits: 42 });
+for (const scenario of [
+	{
+		name: "get-limits",
+		arguments: {},
+		path: "/rest/user/status",
+		response: { remainingCredits: 42 },
+	},
+	{
+		name: "create-project",
+		arguments: { name: "OAuth project" },
+		path: "/rest/projects",
+		response: {
+			id: "550e8400-e29b-41d4-a716-446655440000",
+			name: "OAuth project",
+			isDefault: false,
 		},
-	});
-	process.env.MAPFLOW_BASE_URL = `http://127.0.0.1:${backend.port}`;
-	try {
-		const source = await f.sign({ aud: f.config.resource });
-		const response = await createHttpHandler(f.config)(
-			new Request(f.config.resource, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${source}`,
-					"Content-Type": "application/json",
-					Accept: "application/json, text/event-stream",
-				},
-				body: JSON.stringify({
-					jsonrpc: "2.0",
-					id: 1,
-					method: "tools/call",
-					params: { name: "get-limits", arguments: {} },
-				}),
-			}),
-		);
-		expect(response.status).toBe(200);
-		expect(await response.json()).toMatchObject({
-			result: { structuredContent: { remainingCredits: 42 } },
+	},
+])
+	test(`OAuth ${scenario.name} uses the exchanged Bearer token`, async () => {
+		const f = await fixture();
+		const previousBase = process.env.MAPFLOW_BASE_URL;
+		let seen = "";
+		const backend = Bun.serve({
+			port: 0,
+			hostname: "127.0.0.1",
+			async fetch(req) {
+				expect(new URL(req.url).pathname).toBe(scenario.path);
+				seen = req.headers.get("authorization") ?? "";
+				if (scenario.name === "create-project") {
+					expect(req.method).toBe("POST");
+					expect(await req.json()).toEqual(scenario.arguments);
+				}
+				return Response.json(scenario.response);
+			},
 		});
-		expect(seen.startsWith("Bearer ")).toBe(true);
-		expect(seen).not.toBe(`Bearer ${source}`);
-	} finally {
-		if (previousBase === undefined) delete process.env.MAPFLOW_BASE_URL;
-		else process.env.MAPFLOW_BASE_URL = previousBase;
-		backend.stop(true);
-		f.provider.stop(true);
-	}
-});
+		process.env.MAPFLOW_BASE_URL = `http://127.0.0.1:${backend.port}`;
+		try {
+			const source = await f.sign({ aud: f.config.resource });
+			const response = await createHttpHandler(f.config)(
+				new Request(f.config.resource, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${source}`,
+						"Content-Type": "application/json",
+						Accept: "application/json, text/event-stream",
+					},
+					body: JSON.stringify({
+						jsonrpc: "2.0",
+						id: 1,
+						method: "tools/call",
+						params: { name: scenario.name, arguments: scenario.arguments },
+					}),
+				}),
+			);
+			expect(response.status).toBe(200);
+			expect(await response.json()).toMatchObject({
+				result: { structuredContent: scenario.response },
+			});
+			expect(seen.startsWith("Bearer ")).toBe(true);
+			expect(seen).not.toBe(`Bearer ${source}`);
+		} finally {
+			if (previousBase === undefined) delete process.env.MAPFLOW_BASE_URL;
+			else process.env.MAPFLOW_BASE_URL = previousBase;
+			backend.stop(true);
+			f.provider.stop(true);
+		}
+	});

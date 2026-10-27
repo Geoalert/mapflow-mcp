@@ -4,6 +4,7 @@
 
 ## Дополнения 2026-10-27
 
+- Добавлен 18-й инструмент `create-project`: `name` (непустое после trim, максимум 128 символов), `description?` (максимум 1024), `POST /rest/projects` → существующий `ProjectJson`. ID ответа используется в `start-processing.projectId`. Проверены `ProjectResource`, `CreateProjectInputJson` и лимиты в `ProjectService` на duty-коммите WM `b129ffec`. Произвольные `displayProperties`, права и sharing не открываются. Аннотации: запись, не разрушительная, не идемпотентная. При неопределённом исходе создания сначала проверить `list-projects`, без автоматического повтора POST. Исторический список v1 ниже содержит прежние 17 инструментов.
 - По WM `origin/master` `190a2fcb`: nullable стоимость и параметры обработки, nullable dataProvider/zoom в SourceParams и feedback рейтинга сохраняются в MCP. Это относится также к ответу запуска и кратким элементам страницы.
 - Статистика допускает `geometryType: null` для пустой группы и сохраняет `displayName`, `color`, `metric`, `order`.
 - `get-image-metadata` принимает `imageId`, необязательные `dataProvider` и `zoom`. Общий поиск использует `GET /rest/catalog/{imageId}?provider_name=...`; ArcGIS/CG отображаются в `cgmosaic`, варианты Orbview — в `orbview`. Неоднозначный результат требует выбора провайдера/zoom. Старый `/rest/catalog/meta/{imageId}` работает только с явным `dataProvider=maxar`: backend fetchMeta пока поддерживает только Maxar.
@@ -72,9 +73,10 @@ NOT_FOUND. Read-only диагностика развёрнутого `cg-mosaic-
 Клиент показывает выбранный снимок через `/catalog/{imageId}`. Успешные поиск,
 выбор и обработка не подтверждают реализацию ArcGIS lookup по ID.
 
-Необходимое исправление: реализовать `ArcgisProvider.get_image_meta` через
-существующий ArcGIS request service и mapper, проверить соответствие ID/zoom
-данным поиска и повторить вызов через OAuth MCP. Репозиторий по пути образа
+По решению пользователя отсутствие ArcGIS lookup по ID пока рассматривается как
+ожидаемое ограничение; расширение сервиса не выполняется. Если поддержка этого
+сценария понадобится, необходимо реализовать `ArcgisProvider.get_image_meta` через
+существующий ArcGIS request service и mapper и проверить ID/zoom. Репозиторий по пути образа
 `geoalert-projects/white-maps-platform/cg-mosaic-search` недоступен через GitLab
 API и Git SSH; реализация и её выкладка пока не выполнены.
 

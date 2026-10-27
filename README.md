@@ -97,7 +97,7 @@ MAPFLOW_TOKEN=your_token bun run src/server.ts
 
 ## Tools
 
-The server exposes 17 tools. Parameters and REST mappings are documented in
+The server exposes 18 tools. Parameters and REST mappings are documented in
 [the tool contract specification](docs/tool-contracts.md).
 
 | Tool | Description |
@@ -106,6 +106,7 @@ The server exposes 17 tools. Parameters and REST mappings are documented in
 | `list-imagery-sources` | Available providers, zoom levels and prices |
 | `get-limits` | Fresh limits and remaining credits |
 | `list-projects` | Paginated project search |
+| `create-project` | Create a project with a name and optional description |
 | `get-project` | Project by UUID or `default` |
 | `list-mosaics` | Paginated My Imagery search |
 | `get-mosaic` | Metadata and footprint converted to GeoJSON |
@@ -149,15 +150,23 @@ Use the actual provider and model names returned for the account. The legacy
 `dataProvider: {name, zoom}` remains supported; combining it with `source` is an error.
 `meta` and `inferenceParams` accept string values, matching WM's API contract.
 
-Only `start-processing` writes to Mapflow. The caller must show and obtain user
+`create-project` and `start-processing` write to Mapflow. For a processing launch,
+the caller must show and obtain user
 confirmation of the estimate for the exact configuration being launched. An
 area-only estimate or an estimate without a source is marked `preliminary`.
 Mosaic loading/preprocessing blocks launch; partial failures produce warnings.
 Launch requests are never automatically retried. After an ambiguous network
 failure, check `list-processings` before deciding whether to retry.
 
+`create-project` accepts `name` (1–128 characters after trimming) and optional
+`description` (up to 1024 characters). It returns the project, including its `id`:
+pass this ID as `projectId` to `start-processing`. Creation does not start a paid
+processing. Repeated calls can create duplicate projects; after a timeout or an
+unrecognized creation response, check `list-projects` for the requested name
+before considering another create call.
+
 Results are returned as validated structured content and JSON text. Tool errors
-use `isError`. Result file downloading, uploads, project mutations and agent
+use `isError`. Result file downloading, uploads, project updates/deletion/sharing and agent
 session/memory tools are not exposed. Legacy MCP resources are not registered;
 use `list-models`, `list-imagery-sources` and `get-limits` instead.
 
