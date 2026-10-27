@@ -145,7 +145,7 @@ export const statisticsSchema = z.object({
 	aoiArea: z.number().nonnegative(),
 	groups: z.array(
 		statisticsRowSchema.extend({
-			geometryType: z.string(),
+			geometryType: z.string().nullable(),
 			classes: z.array(statisticsRowSchema).nullish(),
 		}),
 	),
@@ -168,7 +168,7 @@ export const statisticsOutputSchema = statisticsSchema
 		aoiAreaKm2: z.number(),
 		groups: z.array(
 			rowOutput.extend({
-				geometryType: z.string(),
+				geometryType: z.string().nullable(),
 				classes: z.array(rowOutput),
 			}),
 		),

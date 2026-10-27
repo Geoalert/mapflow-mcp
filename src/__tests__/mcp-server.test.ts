@@ -4,7 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import * as z from "zod";
 import { createMapflowClient } from "../mapflow-client.js";
 import { createServer } from "../mcp-server.js";
-import { apiFixture, geometry, id, user } from "./fixtures.js";
+import { apiFixture, geometry, id, statistics, user } from "./fixtures.js";
 
 const originalFetch = globalThis.fetch;
 let client: Client;
@@ -263,6 +263,69 @@ test("source conflict, numeric inference, unknown parameters and reversed dates 
 			true,
 		);
 	expect(requests).toHaveLength(0);
+});
+test("statistics preserve empty groups with null geometryType alongside measured groups", async () => {
+	responseOverride = () =>
+		Response.json({
+			...statistics,
+			groups: [
+				...statistics.groups,
+				{
+					key: "empty",
+					geometryType: null,
+					count: 0,
+					area: null,
+					length: null,
+					classes: null,
+				},
+			],
+		});
+	const result = await client.callTool({
+		name: "get-processing-statistics",
+		arguments: { processingId: id },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(result.structuredContent).toMatchObject({
+		status: "READY",
+		totalCount: 2,
+		groups: [
+			{ key: "buildings", geometryType: "POLYGON", count: 2, areaM2: 300 },
+			{
+				key: "empty",
+				geometryType: null,
+				count: 0,
+				areaM2: null,
+				areaKm2: null,
+				lengthM: null,
+				lengthKm: null,
+				classes: [],
+			},
+		],
+	});
+});
+test("statistics reject invalid geometryType values", async () => {
+	responseOverride = () =>
+		Response.json({
+			...statistics,
+			groups: statistics.groups.map((group) => ({
+				...group,
+				geometryType: 123,
+			})),
+		});
+	const result = await client.callTool({
+		name: "get-processing-statistics",
+		arguments: { processingId: id },
+	});
+	expect(result.isError).toBe(true);
+	expect(result.content).toEqual([
+		{
+			type: "text",
+			text: JSON.stringify({
+				code: "INVALID_RESPONSE",
+				message: "Mapflow API returned an unexpected response shape",
+			}),
+		},
+	]);
 });
 test("COMPUTING and READY with zero remain distinct", async () => {
 	for (const status of ["COMPUTING", "READY", "FAILED"]) {
