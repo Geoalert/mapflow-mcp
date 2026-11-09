@@ -627,6 +627,35 @@ test("missing metadata mentions zoom only when it was provided", async () => {
 	}
 });
 
+for (const variant of ["current", "original"]) {
+	test(`GeoJSON ${variant} accepts the backend file media type`, async () => {
+		responseOverride = (url) => {
+			if (url.pathname.endsWith("/v2")) return Response.json(processing);
+			const accept = new Headers(requests.at(-1)?.headers).get("Accept");
+			if (accept !== "application/octet-stream")
+				return new Response(null, { status: 406 });
+			return new Response(
+				JSON.stringify({ type: "FeatureCollection", features: [] }),
+				{
+					headers: { "Content-Type": "application/octet-stream" },
+				},
+			);
+		};
+		const result = await client.callTool({
+			name: "get-processing-result",
+			arguments: { processingId: id, variant },
+		});
+		expect(result.isError).not.toBe(true);
+		expect(result.structuredContent).toMatchObject({
+			format: "geojson",
+			variant,
+		});
+		expect(new Headers(requests[0]?.headers).get("Accept")).toBe(
+			"application/json",
+		);
+	});
+}
+
 test("GeoJSON result is delivered as a resource without exposing internal layer URLs", async () => {
 	responseOverride = (u) =>
 		u.pathname.endsWith("/v2")

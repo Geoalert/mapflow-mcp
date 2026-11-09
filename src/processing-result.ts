@@ -50,6 +50,7 @@ export async function getProcessingResult(
 		);
 	const response = await http.request(
 		`/rest/processings/${processingId}/result${variant === "original" ? "/original" : ""}`,
+		{ headers: { Accept: "application/octet-stream" } },
 	);
 	const tooLarge = () =>
 		new ApiError(
