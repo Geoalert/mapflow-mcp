@@ -22,7 +22,7 @@ test("stdio entrypoint initializes, lists tools and computes a buffer", async ()
 	const client = new Client({ name: "stdio-smoke", version: "1" });
 	try {
 		await client.connect(transport);
-		expect((await client.listTools()).tools).toHaveLength(18);
+		expect((await client.listTools()).tools).toHaveLength(19);
 		const result = await client.callTool({
 			name: "buffer-aoi",
 			arguments: {
@@ -95,8 +95,8 @@ test("HTTP entrypoint supports repeated requests and independent clients", async
 					{ requestInit: { headers: { Authorization: `Bearer token-${n}` } } },
 				),
 			);
-			expect((await c.listTools()).tools).toHaveLength(18);
-			expect((await c.listTools()).tools).toHaveLength(18);
+			expect((await c.listTools()).tools).toHaveLength(19);
+			expect((await c.listTools()).tools).toHaveLength(19);
 			const limits = await c.callTool({ name: "get-limits", arguments: {} });
 			expect(limits.structuredContent).toEqual({
 				remainingCredits: n === 0 ? 10 : 20,

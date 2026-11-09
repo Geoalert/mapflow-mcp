@@ -74,6 +74,7 @@ const calls: [string, Record<string, unknown>][] = [
 	["get-mosaic-status", { mosaicId: id }],
 	["list-processings", { projectId: id, query: "Buildings" }],
 	["get-processing", { processingId: id }],
+	["get-processing-result", { processingId: id }],
 	["get-processing-statistics", { processingId: id }],
 	[
 		"search-imagery-catalog",
@@ -158,7 +159,7 @@ test("discovery publishes numeric coordinate arrays while runtime rejects invali
 	}
 	expect(requests).toHaveLength(0);
 });
-test("tools/list exposes 18 tools, with creation and processing as non-idempotent writes", async () => {
+test("tools/list exposes 19 tools, with creation and processing as non-idempotent writes", async () => {
 	const { tools } = await client.listTools();
 	expect(tools.map((t) => t.name).sort()).toEqual(
 		calls.map((c) => c[0]).sort(),
@@ -170,11 +171,6 @@ test("tools/list exposes 18 tools, with creation and processing as non-idempoten
 		expect(t.annotations?.idempotentHint).toBe(!write);
 		expect(t.annotations?.destructiveHint).toBe(t.name === "start-processing");
 	}
-	expect(
-		tools.some(
-			(t) => t.name.includes("result") && !t.name.includes("statistics"),
-		),
-	).toBe(false);
 });
 for (const [name, args] of calls)
 	test(`MCP call: ${name}`, async () => {
@@ -430,14 +426,18 @@ test("catalog metadata uses provider routing and explicit zoom without losing ot
 		["CG_mosaic_2022", "cgmosaic"],
 		["orbview_sv1", "orbview"],
 		["roscosmos", "roscosmos"],
-		["skywatch_spot", "skywatch_spot"],
 	]) {
 		const result = await client.callTool({
 			name: "get-image-metadata",
 			arguments: { imageId: image.id, dataProvider, zoom: 18 },
 		});
 		expect(result.isError).not.toBe(true);
-		expect(result.structuredContent).toMatchObject({ id: image.id, zoom: 18 });
+		expect(result.structuredContent).toMatchObject({
+			id: image.id,
+			zoom: 18,
+			footprint: geometry,
+			previews: image.previews,
+		});
 		expect(requests.at(-1)?.url.pathname).toBe(
 			`/rest/catalog/${encodeURIComponent(image.id)}`,
 		);
@@ -564,4 +564,176 @@ test("COMPUTING and READY with zero remain distinct", async () => {
 			totalAreaM2: null,
 		});
 	}
+});
+
+test("catalog excludes inactive providers and preserves real selected-provider errors", async () => {
+	const irrelevant = {
+		providerName: "SkyWatch",
+		message: "Invalid request: productTypes or dataProviders are incorrect",
+	};
+	const selected = { providerName: "ORBVIEW", message: irrelevant.message };
+	const outage = { providerName: "SkyWatch", message: "upstream timeout" };
+	responseOverride = () =>
+		Response.json({
+			images: [image],
+			total: 120,
+			errors: [irrelevant, selected, outage],
+		});
+	const result = await client.callTool({
+		name: "search-imagery-catalog",
+		arguments: { geometry, dataProviders: ["orbview_sv1"] },
+	});
+	expect(result.structuredContent).toMatchObject({
+		hasNext: true,
+		total: 120,
+		providerErrors: [selected, outage],
+		items: [{ footprint: geometry, previews: image.previews }],
+	});
+	await client.callTool({
+		name: "search-imagery-catalog",
+		arguments: { geometry },
+	});
+	expect(JSON.stringify(requests.at(-1)?.body)).not.toContain("skywatch");
+	const before = requests.length;
+	for (const provider of [
+		"skywatch",
+		"skywatch_spot",
+		"skywatch_pleiades",
+		"skywatch_pleiades_neo",
+	]) {
+		const rejected = await client.callTool({
+			name: "search-imagery-catalog",
+			arguments: { geometry, dataProviders: [provider] },
+		});
+		expect(rejected.isError).toBe(true);
+	}
+	expect(requests).toHaveLength(before);
+});
+
+test("missing metadata mentions zoom only when it was provided", async () => {
+	responseOverride = () => Response.json([]);
+	for (const args of [
+		{ imageId: "missing" },
+		{ imageId: "missing", zoom: 18 },
+	]) {
+		const result = await client.callTool({
+			name: "get-image-metadata",
+			arguments: args,
+		});
+		expect(result.isError).toBe(true);
+		expect(JSON.stringify(result.content).includes("zoom")).toBe(
+			"zoom" in args,
+		);
+	}
+});
+
+test("GeoJSON result is delivered as a resource without exposing internal layer URLs", async () => {
+	responseOverride = (u) =>
+		u.pathname.endsWith("/v2")
+			? Response.json({
+					...processing,
+					vectorLayer: { tileUrl: "https://private.example/vector" },
+					rasterLayer: { tileUrl: "https://private.example/raster" },
+					resultRasterLayer: { tileUrl: "https://private.example/result" },
+				})
+			: undefined;
+	const status = await client.callTool({
+		name: "get-processing",
+		arguments: { processingId: id },
+	});
+	expect(JSON.stringify(status)).not.toContain("private.example");
+	const result = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id, variant: "original" },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(result.structuredContent).toMatchObject({
+		fileName: `${id}-original.geojson`,
+		format: "geojson",
+	});
+	expect(result.structuredContent).not.toHaveProperty("text");
+	expect(result.content).toContainEqual({
+		type: "resource",
+		resource: {
+			uri: `mapflow://processings/${id}/result/original.geojson`,
+			mimeType: "application/geo+json",
+			text: JSON.stringify({ type: "FeatureCollection", features: [] }),
+		},
+	});
+	expect(requests.at(-1)?.url.pathname).toBe(
+		`/rest/processings/${id}/result/original`,
+	);
+	expect(requests.at(-1)?.headers).toMatchObject({
+		Authorization: "Basic test-token",
+	});
+});
+
+for (const status of [403, 404])
+	test(`GeoJSON download cannot bypass processing access (${status})`, async () => {
+		responseOverride = () => new Response("denied", { status });
+		const result = await client.callTool({
+			name: "get-processing-result",
+			arguments: { processingId: id },
+		});
+		expect(result.isError).toBe(true);
+		expect(requests).toHaveLength(1);
+		expect(requests[0]?.url.pathname).toBe(`/rest/processings/${id}/v2`);
+	});
+
+test("GeoJSON download rejects unfinished processings and aoiId", async () => {
+	responseOverride = () =>
+		Response.json({ ...processing, status: "IN_PROGRESS" });
+	const result = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id },
+	});
+	expect(JSON.stringify(result.content)).toContain("RESULT_NOT_READY");
+	expect(requests).toHaveLength(1);
+	const rejected = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id, aoiId: id },
+	});
+	expect(rejected.isError).toBe(true);
+	expect(requests).toHaveLength(1);
+});
+
+test("GeoJSON rejects invalid JSON and download permission failures", async () => {
+	for (const response of [
+		new Response("not json"),
+		Response.json({ type: "FeatureCollection" }),
+		new Response("denied", { status: 403 }),
+	]) {
+		responseOverride = (u) =>
+			u.pathname.endsWith("/result") ? response : undefined;
+		const result = await client.callTool({
+			name: "get-processing-result",
+			arguments: { processingId: id },
+		});
+		expect(result.isError).toBe(true);
+		expect(JSON.stringify(result.content)).not.toContain('"type":"resource"');
+	}
+});
+
+test("GeoJSON cancels oversized chunked streams without trusting Content-Length", async () => {
+	let cancelled = false;
+	responseOverride = (u) =>
+		u.pathname.endsWith("/result")
+			? new Response(
+					new ReadableStream({
+						pull(controller) {
+							controller.enqueue(new Uint8Array(1024 * 1024));
+						},
+						cancel() {
+							cancelled = true;
+						},
+					}),
+					{ headers: { "Content-Length": "1" } },
+				)
+			: undefined;
+	const result = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id },
+	});
+	expect(JSON.stringify(result.content)).toContain("RESULT_TOO_LARGE");
+	expect(cancelled).toBe(true);
 });

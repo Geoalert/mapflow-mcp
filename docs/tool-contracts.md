@@ -2,6 +2,14 @@
 
 Первичная проверка: 2026-10-14. Контракты ниже фиксируют первоначальный аудит; дополнения от 2026-10-27 перечислены отдельно. Статус живой проверки каждого инструмента фиксируется отдельно от локальных тестов.
 
+## Дополнения 2026-11-09
+
+- Актуальный MCP main/duty: `452c27d`; исправления чеклиста #103 подготовлены отдельно, не выложены. Подробности и ограничения проверки: [checklist-103-audit.md](checklist-103-audit.md).
+- My Imagery передаёт `mosaicId` и в расчёт, и в запуск. Старый адаптер с пустым объектом был ошибочным.
+- Каталог сохраняет `footprint` и составные `previews`; Skywatch исключён. Ошибки неприменимых фильтров невыбранных провайдеров отфильтрованы, реальные ошибки сохранены. Для выбора лучшего снимка нужно учитывать сортировку и пагинацию.
+- Добавлен 19-й инструмент `get-processing-result`, описан ниже. Из ответа processing убраны внутренние layer URL, не являющиеся ссылками скачивания.
+- В duty backend `a5b00a4d` уже есть `ResultService.canReadResult`: actor проверяется через `processingExistsToSee`, AOI — через `aoiOfProcessing`. Ниже замечание первоначального аудита относится к старому backend.
+
 ## Дополнения 2026-10-27
 
 - Добавлен 18-й инструмент `create-project`: `name` (непустое после trim, максимум 128 символов), `description?` (максимум 1024), `POST /rest/projects` → существующий `ProjectJson`. ID ответа используется в `start-processing.projectId`. Проверены `ProjectResource`, `CreateProjectInputJson` и лимиты в `ProjectService` на duty-коммите WM `b129ffec`. Произвольные `displayProperties`, права и sharing не открываются. Аннотации: запись, не разрушительная, не идемпотентная. При неопределённом исходе создания сначала проверить `list-projects`, без автоматического повтора POST. Исторический список v1 ниже содержит прежние 17 инструментов.
@@ -188,7 +196,7 @@ Project содержит `id`, `name`, `description`, `isDefault`, `created`, `u
 
 Преобразование: provider → `params.sourceParams.dataProvider.{providerName,zoom}`; catalog → `imagerySearch.{dataProvider,imageIds,zoom}`; myImagery → `myImagery.{mosaicId}`. Внешние строки провайдеров проверять по поддерживаемым backend значениям; не молча удалять неизвестные фильтры. `Block = {name: string, enabled: boolean}`.
 
-Backend допускает также отдельное My Imagery image (`imageIds`, максимум один), `userDefined` и `aoiDetails`; их пока не открываем. Первому набору достаточно целой мозаики и AOI. При расчёте My Imagery текущий агент передаёт `{myImagery:{}}`, а при запуске — mosaicId. Сохранить этот подтверждённый адаптер до интеграционной проверки стоимости с mosaicId; пользовательский `Source` остаётся одинаковым.
+Backend допускает также отдельное My Imagery image (`imageIds`, максимум один), `userDefined` и `aoiDetails`; их пока не открываем. Первому набору достаточно целой мозаики и AOI. Расчёт и запуск передают одинаковый `{myImagery:{mosaicId}}`. Пустой объект теряет выбранный источник и не должен использоваться.
 
 Стоимость получать через `POST /rest/processing/cost/details/v2`: `{dataCost, processingCost}`, `cost` — их сумма. `wdName` разрешать в `wdId` через доступные модели. Источники: `rest/CostCalculatorResource.scala`, `rest/json/CalculateCostInput.scala`, `model/SourceParams.scala`, `model/ProcessingParams.scala`, `rest/json/ProcessingJson.scala`.
 
@@ -202,17 +210,17 @@ Backend допускает также отдельное My Imagery image (`imag
 
 REST: `POST /rest/catalog/meta`, geometry → `aoi`. Источник: `rest/json/ImageCatalogRequestJson.scala`. Нижние границы должны быть ≤ верхних. Backend также поддерживает `productTypes` и `returnErrors`; не добавлять пользовательские knobs без отдельного сценария. Политику получения и нормализации частичных ошибок провайдеров определить при реализации. Не копировать загрузку до 1000 снимков из агента ради отображения первых 20.
 
-## Получение файлов: следующий этап, контракт зарезервирован
+## Получение GeoJSON
 
 `get-processing-result(processingId: UUID, variant?: "current" | "original" = "current")`.
 
-Назначение — получить GeoJSON-файл через авторизованный канал, а не вернуть весь FeatureCollection в текст модели. В v1 этот инструмент **не регистрируется**. Условия включения:
+Требуется backend с проверкой actor на download endpoints; она подтверждена в коде duty-тега `a5b00a4d`. MCP дополнительно делает свежий user-scoped `GET /rest/processings/{id}/v2`, проверяет ID и статус `OK`, затем скачивает результат с теми же credentials. `aoiId` не открывается.
 
-1. Проверены доступ actor к processing и принадлежность AOI для всех download endpoints на целевом окружении. В MCP сначала не открываем `aoiId`, пока нет сценария выбора AOI.
-2. Выбран и реализован транспорт файла: ограниченный по размеру ресурс MCP или защищённый download/artifact endpoint с ограниченным временем жизни. Путь на диске удалённого сервера не считается доставкой пользователю.
-3. Зафиксированы ограничения размера, время жизни, отмена/ошибки стрима и тесты двух пользователей. Секреты не включаются в URL/ответ.
+Ответ: `{processingId, variant, format:"geojson", fileName, mimeType, resourceUri, sizeBytes}` и embedded MCP resource с текстом GeoJSON. URI идентифицирует вложенный ресурс: это не публичный URL и не отдельный `resources/read` endpoint. Сервер не хранит файлы, поэтому TTL отсутствует; клиент может сохранить ресурс под `fileName`.
 
-Будущий ответ: `{processingId, variant, format:"geojson", fileName, resourceUri, expiresAt?}`. Это проект контракта MCP, не готовый backend JSON. Растровый экспорт, произвольные форматы, исторические ревизии и spatial query результатов сюда не входят.
+Лимит 5 MiB проверяется по реально прочитанным байтам, включая chunked ответы. Превышение отменяет stream с `RESULT_TOO_LARGE`; полный файл следует скачать в Mapflow. Тайм-аут транспорта — 30 секунд. Невалидный JSON/FeatureCollection и обрыв стрима дают явную ошибку без частичного файла. Тесты проверяют отказ при 403/404, незавершённой обработке, чужом AOI-параметре, некорректном ответе и превышении размера. Живая проверка новых исправлений ещё не выполнена: локальный API-токен получает 401 на duty.
+
+Растровый экспорт, произвольные форматы, исторические ревизии и spatial query результатов сюда не входят.
 
 ## Что не включать
 

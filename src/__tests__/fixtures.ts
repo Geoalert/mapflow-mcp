@@ -65,6 +65,8 @@ export const mosaicStatus = {
 };
 export const image = {
 	id: "opaque/image:1",
+	footprint: geometry,
+	previews: [{ geometry, url: "https://example.com/part.jpg" }],
 	providerName: "roscosmos",
 	pixelResolution: 0.5,
 	previewUrl: "https://example.com/preview.jpg",
@@ -105,6 +107,8 @@ export function apiFixture(url: URL): unknown {
 	if (path.endsWith("/statistics")) return statistics;
 	if (path === "/rest/processing/cost/details/v2")
 		return { dataCost: 3, processingCost: 7 };
+	if (path.endsWith("/result") || path.endsWith("/result/original"))
+		return { type: "FeatureCollection", features: [] };
 	if (path.startsWith("/rest/processings")) return processing;
 	if (path === "/rest/catalog/meta")
 		return {

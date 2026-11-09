@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type {
+	EmbeddedResource,
 	ServerNotification,
 	ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
@@ -16,6 +17,10 @@ import {
 	createNominatimClient,
 	type NominatimClient,
 } from "./nominatim-client.js";
+import {
+	resultOutputSchema,
+	resultRequestSchema,
+} from "./processing-result.js";
 import {
 	mapflowDataProviderSchema,
 	mapflowModelSchema,
@@ -63,6 +68,7 @@ export function createServer(
 		output: z.ZodObject,
 		handler: (args: z.output<z.ZodObject<S>>, extra: Extra) => unknown,
 		behavior: "read" | "create" | "charge" = "read",
+		attachment?: (value: unknown) => EmbeddedResource,
 	) {
 		server.toolNames.add(name);
 		server.registerTool<z.ZodObject, z.ZodObject<S>>(
@@ -80,9 +86,13 @@ export function createServer(
 			},
 			async (args, extra) => {
 				try {
-					const data = output.parse(await handler(schema.parse(args), extra));
+					const raw = await handler(schema.parse(args), extra);
+					const data = output.parse(raw);
 					return {
-						content: [{ type: "text" as const, text: JSON.stringify(data) }],
+						content: [
+							{ type: "text" as const, text: JSON.stringify(data) },
+							...(attachment ? [attachment(raw)] : []),
+						],
 						structuredContent: data,
 					};
 				} catch (error) {
@@ -185,10 +195,29 @@ export function createServer(
 	);
 	register(
 		"get-processing",
-		"Get processing status, progress and layer metadata. Does not download results.",
+		"Get processing status and progress. Use get-processing-result for GeoJSON; internal map layers are not download links.",
 		input.processingIdSchema,
-		api.processingSchema,
+		api.processingOutputSchema,
 		(a, e) => client(e).getProcessing(a.processingId),
+	);
+	register(
+		"get-processing-result",
+		"Download a completed processing's GeoJSON as an embedded MCP resource (up to 5 MiB). Requires access to the processing. Save the resource text as fileName. Larger results must be downloaded in Mapflow. Does not expose a public download URL.",
+		resultRequestSchema,
+		resultOutputSchema.omit({ text: true }),
+		(a, e) => client(e).getProcessingResult(a),
+		"read",
+		(raw) => {
+			const result = resultOutputSchema.parse(raw);
+			return {
+				type: "resource",
+				resource: {
+					uri: result.resourceUri,
+					mimeType: result.mimeType,
+					text: result.text,
+				},
+			};
+		},
 	);
 	register(
 		"get-processing-statistics",
@@ -199,7 +228,7 @@ export function createServer(
 	);
 	register(
 		"search-imagery-catalog",
-		"Search imagery by explicit AOI and filters without changing any selection. Unknown provider names are rejected. Resolution is meters per pixel; angles are degrees.",
+		"Search imagery by explicit AOI and filters without changing any selection. Results are paginated: use sortBy/sortOrder for the user's selection criterion and follow hasNext with offset + count before claiming the best image across all matches. Unknown and inactive provider names are rejected. Resolution is meters per pixel; angles are degrees.",
 		input.searchCatalogSchema,
 		api
 			.pageOutputSchema(api.catalogImageSchema)
@@ -208,7 +237,7 @@ export function createServer(
 	);
 	register(
 		"get-image-metadata",
-		"Get catalog image metadata by opaque image ID. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. Use dataProvider=maxar only for the legacy Maxar catalog.",
+		"Get catalog image metadata and footprint by opaque image ID. Use previews (each with geometry and url) for composite imagery such as Roscosmos; previewUrl alone can be incomplete. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. Use dataProvider=maxar only for the legacy Maxar catalog.",
 		input.imageMetadataSchema,
 		api.catalogImageSchema,
 		(a, e) => client(e).getImageMetadata(a),
@@ -268,7 +297,7 @@ export function createServer(
 		"start-processing",
 		"Start a paid processing ONLY after the user confirms the cost for these exact parameters. For partial mosaic failures explain the warning before calling. On timeout check list-processings; never automatically retry.",
 		input.createProcessingRequestSchema,
-		api.processingSchema.extend({ warnings: z.array(z.string()) }),
+		api.processingOutputSchema.extend({ warnings: z.array(z.string()) }),
 		(a, e) => client(e).createProcessing(a),
 		"charge",
 	);
