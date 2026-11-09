@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { aoiSchema } from "./geometry.js";
-import { mapflowProcessingSchema } from "./schemas.js";
+import { geoJsonGeometrySchema, mapflowProcessingSchema } from "./schemas.js";
 
 const count = z.number().int().nonnegative();
 const nullableNumber = z.number().nullable().optional();
@@ -20,6 +20,13 @@ export const processingSchema = mapflowProcessingSchema.extend({
 	id: z.uuid(),
 	status: z.string(),
 });
+export const processingOutputSchema = processingSchema
+	.omit({
+		vectorLayer: true,
+		rasterLayer: true,
+		resultRasterLayer: true,
+	})
+	.strip();
 export const processingSummarySchema = z.object({
 	id: z.uuid(),
 	name: z.string().optional(),
@@ -110,6 +117,10 @@ export const costOutputSchema = costDetailsSchema.extend({
 });
 export const catalogImageSchema = z.object({
 	id: z.string(),
+	footprint: geoJsonGeometrySchema.nullish(),
+	previews: z
+		.array(z.object({ geometry: geoJsonGeometrySchema, url: z.string() }))
+		.nullish(),
 	satId: z.string().nullish(),
 	pixelResolution: nullableNumber,
 	acquisitionDate: z.string().nullish(),

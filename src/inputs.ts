@@ -18,7 +18,6 @@ export const catalogProviders = [
 	"cg_mosaic_2024",
 	"cg_mosaic_2025",
 	"roscosmos",
-	"skywatch",
 ] as const;
 export const searchProviders = [
 	"arcgis_world_imagery",
@@ -35,10 +34,6 @@ export const searchProviders = [
 	"orbview_svn1",
 	"orbview_svn3",
 	"roscosmos",
-	"skywatch",
-	"skywatch_spot",
-	"skywatch_pleiades",
-	"skywatch_pleiades_neo",
 ] as const;
 export const sourceSchema = z.discriminatedUnion("type", [
 	z.strictObject({ type: z.literal("provider"), name: text, zoom }),

@@ -11,6 +11,10 @@ import {
 	createProcessingRequestSchema,
 	createProjectSchema,
 } from "./inputs.js";
+import {
+	getProcessingResult,
+	type resultRequestSchema,
+} from "./processing-result.js";
 import { buildParams, resolveSource } from "./processing-source.js";
 import { createReadClient } from "./read-client.js";
 import {
@@ -58,6 +62,9 @@ export function createMapflowClient(token: ApiCredentials) {
 	return {
 		...http,
 		...reads,
+		getProcessingResult(args: z.input<typeof resultRequestSchema>) {
+			return getProcessingResult(http, args);
+		},
 		createProject(args: z.input<typeof createProjectSchema>) {
 			return http.post(
 				"/rest/projects",
@@ -121,7 +128,7 @@ export function createMapflowClient(token: ApiCredentials) {
 					wdId: model.id,
 					geometry: req.geometry,
 					areaSqKm: req.areaSqKm,
-					params: buildParams(source, req.inferenceParams, true),
+					params: buildParams(source, req.inferenceParams),
 					blocks: req.blocks,
 				},
 			);

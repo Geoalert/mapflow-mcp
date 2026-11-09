@@ -97,7 +97,7 @@ MAPFLOW_TOKEN=your_token bun run src/server.ts
 
 ## Tools
 
-The server exposes 18 tools. Parameters and REST mappings are documented in
+The server exposes 19 tools. Parameters and REST mappings are documented in
 [the tool contract specification](docs/tool-contracts.md).
 
 | Tool | Description |
@@ -112,7 +112,8 @@ The server exposes 18 tools. Parameters and REST mappings are documented in
 | `get-mosaic` | Metadata and footprint converted to GeoJSON |
 | `get-mosaic-status` | Data readiness, loading and per-image failures |
 | `list-processings` | Paginated processing search within a project |
-| `get-processing` | Status, progress and layer metadata |
+| `get-processing` | Status and progress, without internal map-layer URLs |
+| `get-processing-result` | Current or original GeoJSON as an embedded MCP resource, up to 5 MiB |
 | `get-processing-statistics` | Counts, areas and lengths by class |
 | `search-imagery-catalog` | Imagery search by AOI and filters |
 | `get-image-metadata` | Metadata for a catalog image |
@@ -131,6 +132,19 @@ For `get-image-metadata`, pass `imageId`, `dataProvider` and, when available,
 selecting a different zoom. `dataProvider: "maxar"` selects the legacy Maxar-only
 metadata endpoint. Statistics preserve nullable geometry types for empty groups
 and the backend's display names, colors, metrics and ordering.
+
+Catalog responses preserve `footprint` and composite `previews` (geometry + URL).
+Use all preview parts for Roscosmos. Inactive Skywatch sources are excluded.
+For best-image selection, sort by the user's criterion and follow `hasNext`
+using `offset + count`; the first page alone is not the complete search result.
+
+`get-processing-result` checks access and completion, then downloads through the
+same authenticated backend transport. It returns metadata plus an embedded
+`application/geo+json` resource; save its text using `fileName`. The URI identifies
+the inline resource, not a public link or a separately stored server file.
+There is no server cache or expiry. Downloads exceeding 5 MiB are cancelled;
+larger results must be downloaded in Mapflow. Requires backend result endpoints
+with actor/AOI authorization (verified in duty backend `a5b00a4d`).
 
 Both cost and launch accept a `source`:
 

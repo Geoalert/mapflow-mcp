@@ -10,7 +10,6 @@ export function resolveSource(
 export function buildParams(
 	source: Source | undefined,
 	inferenceParams?: Record<string, string>,
-	forCost = false,
 ) {
 	if (!source) return undefined;
 	const sourceParams =
@@ -24,6 +23,6 @@ export function buildParams(
 							zoom: source.zoom,
 						},
 					}
-				: { myImagery: forCost ? {} : { mosaicId: source.mosaicId } };
+				: { myImagery: { mosaicId: source.mosaicId } };
 	return { sourceParams, ...(inferenceParams ? { inferenceParams } : {}) };
 }

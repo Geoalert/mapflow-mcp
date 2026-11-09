@@ -1,5 +1,6 @@
 import * as z from "zod";
 import * as api from "./api-schemas.js";
+import { relevantCatalogErrors } from "./catalog-errors.js";
 import { parseFootprint } from "./geometry.js";
 import * as input from "./inputs.js";
 import { ApiError, type ApiTransport } from "./transport.js";
@@ -154,6 +155,7 @@ export function createReadClient(http: ApiTransport) {
 				api.catalogResponseSchema,
 				{
 					...filters,
+					dataProviders: filters.dataProviders ?? [...input.searchProviders],
 					aoi: geometry,
 					acquisitionDateFrom: input.toInstant(acquisitionDateFrom),
 					acquisitionDateTo: input.toInstant(acquisitionDateTo, true),
@@ -162,7 +164,10 @@ export function createReadClient(http: ApiTransport) {
 			);
 			return {
 				...page(data.images, data.total, filters.limit, filters.offset),
-				providerErrors: data.errors ?? null,
+				providerErrors: relevantCatalogErrors(
+					data.errors,
+					filters.dataProviders,
+				),
 			};
 		},
 		async getImageMetadata(args: z.input<typeof input.imageMetadataSchema>) {
@@ -191,7 +196,9 @@ export function createReadClient(http: ApiTransport) {
 			);
 			if (matches.length === 0)
 				throw new ApiError(
-					"No catalog image matches the requested ID and zoom",
+					zoom === undefined
+						? "No catalog image matches the requested imageId and provider. Use an imageId and dataProvider returned by search-imagery-catalog."
+						: "No catalog image matches the requested imageId, provider and zoom. Use the values returned by search-imagery-catalog.",
 					"NOT_FOUND",
 				);
 			if (matches.length !== 1)

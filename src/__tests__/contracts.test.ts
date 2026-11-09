@@ -69,7 +69,7 @@ for (const source of [
 		expect(cost?.blocks).toEqual(start?.blocks);
 		if (source.type === "myImagery") {
 			expect(cost?.params).toEqual({
-				sourceParams: { myImagery: {} },
+				sourceParams: { myImagery: { mosaicId: id } },
 				inferenceParams: config.inferenceParams,
 			});
 			expect(start?.params).toEqual({
