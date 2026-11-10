@@ -42,6 +42,7 @@ beforeEach(async () => {
 	const api = createMapflowClient("test-token");
 	server = createServer({
 		getClient: () => api,
+		geometryOwner: "test-user",
 		nominatim: {
 			searchBoundary: async () => ({
 				place_id: 1,
@@ -765,4 +766,123 @@ test("GeoJSON cancels oversized chunked streams without trusting Content-Length"
 	});
 	expect(JSON.stringify(result.content)).toContain("RESULT_TOO_LARGE");
 	expect(cancelled).toBe(true);
+});
+
+test("cached boundary feeds catalog, cost and launch without leaking coordinates", async () => {
+	const boundary = await client.callTool({
+		name: "get-geoboundary",
+		arguments: { query: "Test" },
+	});
+	const geometryId = (boundary.structuredContent as Record<string, unknown>)
+		?.geometryId;
+	expect(typeof geometryId).toBe("string");
+	expect(
+		(boundary.structuredContent as Record<string, unknown>)?.geometry,
+	).toBeUndefined();
+	expect(JSON.stringify(boundary.content)).not.toContain("coordinates");
+	for (const [name, args] of calls.filter(([name]) =>
+		["search-imagery-catalog", "calculate-cost", "start-processing"].includes(
+			name,
+		),
+	)) {
+		const { geometry: _, ...rest } = args;
+		const result = await client.callTool({
+			name,
+			arguments: { ...rest, geometryId },
+		});
+		expect(result.isError).not.toBe(true);
+	}
+	for (const path of [
+		"/rest/catalog/meta",
+		"/rest/processing/cost/details/v2",
+		"/rest/processings/v2",
+	]) {
+		const request = requests.find((r) => r.url.pathname === path);
+		expect(request?.body).toMatchObject(
+			path.includes("catalog") ? { aoi: geometry } : { geometry },
+		);
+		expect(request?.body).not.toHaveProperty("geometryId");
+	}
+});
+
+test("buffer creates a new ID and optional GeoJSON without mutating the original", async () => {
+	const boundary = await client.callTool({
+		name: "get-geoboundary",
+		arguments: { query: "Test", includeGeometry: true },
+	});
+	const geometryId = (boundary.structuredContent as Record<string, unknown>)
+		?.geometryId;
+	expect(
+		(boundary.structuredContent as Record<string, unknown>)?.geometry,
+	).toEqual(geometry);
+	const buffered = await client.callTool({
+		name: "buffer-aoi",
+		arguments: { geometryId, distanceMeters: 100, includeGeometry: true },
+	});
+	expect(buffered.isError).not.toBe(true);
+	expect(
+		(buffered.structuredContent as Record<string, unknown>)?.geometryId,
+	).not.toBe(geometryId);
+	expect(
+		(buffered.structuredContent as Record<string, unknown>)?.geometry,
+	).not.toEqual(geometry);
+	await client.callTool({
+		name: "search-imagery-catalog",
+		arguments: { geometryId },
+	});
+	expect(requests.at(-1)?.body).toMatchObject({ aoi: geometry });
+});
+
+test("invalid references and ambiguous geometry inputs never reach the API", async () => {
+	for (const [name, args] of calls.filter(([name]) =>
+		[
+			"search-imagery-catalog",
+			"calculate-cost",
+			"start-processing",
+			"buffer-aoi",
+		].includes(name),
+	)) {
+		const { geometry: _, ...rest } = args;
+		const expired = await client.callTool({
+			name,
+			arguments: { ...rest, geometryId: id },
+		});
+		expect(expired.isError).toBe(true);
+		expect(JSON.stringify(expired.content)).toContain("GEOMETRY_EXPIRED");
+		const ambiguous = await client.callTool({
+			name,
+			arguments: { ...args, geometryId: id },
+		});
+		expect(ambiguous.isError).toBe(true);
+	}
+	expect(requests).toHaveLength(0);
+});
+
+test("reference inputs retain original cross-field validation", async () => {
+	const boundary = await client.callTool({
+		name: "get-geoboundary",
+		arguments: { query: "Test" },
+	});
+	const geometryId = (boundary.structuredContent as Record<string, unknown>)
+		?.geometryId;
+	for (const [name, args] of [
+		["search-imagery-catalog", { minResolution: 2, maxResolution: 1 }],
+		["start-processing", { name: "Test", wdName: "Buildings" }],
+		["calculate-cost", { wdName: "Buildings", areaSqKm: 1 }],
+		[
+			"calculate-cost",
+			{
+				wdName: "Buildings",
+				source: { type: "provider", name: "Mapbox" },
+				dataProvider: { name: "Mapbox", zoom: 18 },
+			},
+		],
+	] as const) {
+		const result = await client.callTool({
+			name,
+			arguments: { ...args, geometryId },
+		});
+		expect(result.isError).toBe(true);
+	}
+	expect(requests).toHaveLength(0);
 });

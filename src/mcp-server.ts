@@ -9,6 +9,8 @@ import type {
 import * as z from "zod";
 import * as api from "./api-schemas.js";
 import { bufferGeometry, geometryDetails } from "./geometry.js";
+import { GeometryCache, geometryOwner } from "./geometry-cache.js";
+import * as geometryTools from "./geometry-tools.js";
 import * as input from "./inputs.js";
 import { recordToolError } from "./logging.js";
 import { loggingTransport } from "./logging-transport.js";
@@ -41,10 +43,41 @@ export function createServer(
 		getClient?: (extra: Extra) => MapflowClient;
 		nominatim?: NominatimClient;
 		allowEnvToken?: boolean;
+		geometryCache?: GeometryCache;
+		geometryOwner?: string;
 	} = {},
 ) {
 	const server = new LoggedMcpServer({ name: "mapflow-mcp", version: "0.2.0" });
 	const clients = new Map<string, MapflowClient>();
+	const geometryCache = options.geometryCache ?? new GeometryCache();
+	const owner = (extra: Extra) => {
+		if (options.geometryOwner) return options.geometryOwner;
+		const token =
+			extra.authInfo?.token ??
+			(options.allowEnvToken === false ? undefined : Bun.env.MAPFLOW_TOKEN);
+		if (!token)
+			throw new ApiError(
+				"Mapflow token is required for cached geometry",
+				"AUTH_REQUIRED",
+			);
+		return geometryOwner(`api:${token}`);
+	};
+	const resolve = <T extends { geometry?: unknown; geometryId?: string }>(
+		args: T,
+		extra: Extra,
+	) => geometryTools.resolveGeometry(args, geometryCache, () => owner(extra));
+	const cacheDetails = (
+		details: ReturnType<typeof geometryDetails>,
+		cacheOwner: string,
+		includeGeometry: boolean,
+	) => {
+		const { geometry, ...summary } = details;
+		return {
+			...summary,
+			...geometryCache.put(cacheOwner, geometry),
+			...(includeGeometry ? { geometry } : {}),
+		};
+	};
 	const nominatim = options.nominatim ?? createNominatimClient();
 	const client = (extra: Extra) => {
 		if (options.getClient) return options.getClient(extra);
@@ -228,12 +261,15 @@ export function createServer(
 	);
 	register(
 		"search-imagery-catalog",
-		"Search imagery by explicit AOI and filters without changing any selection. Results are paginated: use sortBy/sortOrder for the user's selection criterion and follow hasNext with offset + count before claiming the best image across all matches. Unknown and inactive provider names are rejected. Resolution is meters per pixel; angles are degrees.",
-		input.searchCatalogSchema,
+		"Search imagery by geometry or cached geometryId and filters without changing any selection. Results are paginated: use sortBy/sortOrder for the user's selection criterion and follow hasNext with offset + count before claiming the best image across all matches. Unknown and inactive provider names are rejected. Resolution is meters per pixel; angles are degrees.",
+		geometryTools.searchCatalogToolSchema,
 		api
 			.pageOutputSchema(api.catalogImageSchema)
 			.extend({ providerErrors: z.unknown() }),
-		(a, e) => client(e).searchImageryCatalog(a),
+		(a, e) =>
+			client(e).searchImageryCatalog(
+				input.searchCatalogSchema.parse(resolve(a, e)),
+			),
 	);
 	register(
 		"get-image-metadata",
@@ -244,15 +280,16 @@ export function createServer(
 	);
 	register(
 		"get-geoboundary",
-		"Search OpenStreetMap for a place. Points and lines require an explicit positive bufferMeters. Polygon geometry is not silently simplified.",
-		input.geoboundarySchema,
-		api.geometryDetailsSchema.extend({
+		"Search OpenStreetMap for a place. Points and lines require an explicit positive bufferMeters. Returns a cached geometryId and summary; includeGeometry=true returns GeoJSON too. IDs expire after inactivity or server restart. Polygon geometry is not silently simplified.",
+		geometryTools.geoboundaryToolSchema,
+		geometryTools.cachedGeometrySchema.extend({
 			displayName: z.string(),
 			osmId: z.number().optional(),
 			osmType: z.string().optional(),
 			appliedBufferMeters: z.number(),
 		}),
-		async (a) => {
+		async (a, e) => {
+			const cacheOwner = owner(e);
 			const found = await nominatim.searchBoundary(a.query);
 			if (!found?.geojson)
 				throw new ApiError("No geometry found for this place", "NOT_FOUND");
@@ -271,7 +308,7 @@ export function createServer(
 					? bufferGeometry(geometry, a.bufferMeters)
 					: geometryDetails(geometry);
 			return {
-				...details,
+				...cacheDetails(details, cacheOwner, a.includeGeometry),
 				displayName: found.display_name,
 				osmId: found.osm_id,
 				osmType: found.osm_type,
@@ -281,24 +318,44 @@ export function createServer(
 	);
 	register(
 		"buffer-aoi",
-		"Buffer a GeoJSON geometry by distanceMeters, returning a new polygon without changing stored state.",
-		input.bufferAoiSchema,
-		api.geometryDetailsSchema.extend({ appliedBufferMeters: z.number() }),
-		(a) => bufferGeometry(a.geometry, a.distanceMeters),
+		"Buffer geometry or geometryId by distanceMeters. Returns a new cached geometryId and summary without changing the original. Set includeGeometry=true for GeoJSON. Recalculate cost for the new ID.",
+		geometryTools.bufferAoiToolSchema,
+		geometryTools.cachedGeometrySchema.extend({
+			appliedBufferMeters: z.number(),
+		}),
+		(a, e) => {
+			const cacheOwner = owner(e);
+			const { includeGeometry, ...args } = a;
+			const resolved = input.bufferAoiSchema.parse(resolve(args, e));
+			const details = bufferGeometry(
+				resolved.geometry,
+				resolved.distanceMeters,
+			);
+			return {
+				...cacheDetails(details, cacheOwner, includeGeometry),
+				appliedBufferMeters: details.appliedBufferMeters,
+			};
+		},
 	);
 	register(
 		"calculate-cost",
-		"Estimate credits, separating imagery and processing costs. Estimates without geometry or source are preliminary. Recalculate after changing any launch parameter.",
-		input.calculateCostRequestSchema,
+		"Accept geometry or cached geometryId (or areaSqKm for a preliminary estimate). Estimate credits, separating imagery and processing costs. Estimates without geometry or source are preliminary. Recalculate after changing any launch parameter.",
+		geometryTools.calculateCostToolSchema,
 		api.costOutputSchema,
-		(a, e) => client(e).calculateCost(a),
+		(a, e) =>
+			client(e).calculateCost(
+				input.calculateCostRequestSchema.parse(resolve(a, e)),
+			),
 	);
 	register(
 		"start-processing",
-		"Start a paid processing ONLY after the user confirms the cost for these exact parameters. For partial mosaic failures explain the warning before calling. On timeout check list-processings; never automatically retry.",
-		input.createProcessingRequestSchema,
+		"Accept geometry or cached geometryId. After GEOMETRY_EXPIRED, obtain a new geometry and recalculate cost. Start a paid processing ONLY after the user confirms the cost for these exact parameters. For partial mosaic failures explain the warning before calling. On timeout check list-processings; never automatically retry.",
+		geometryTools.createProcessingToolSchema,
 		api.processingOutputSchema.extend({ warnings: z.array(z.string()) }),
-		(a, e) => client(e).createProcessing(a),
+		(a, e) =>
+			client(e).createProcessing(
+				input.createProcessingRequestSchema.parse(resolve(a, e)),
+			),
 		"charge",
 	);
 	return server;
