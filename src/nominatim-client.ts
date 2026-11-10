@@ -13,7 +13,10 @@ const minRequestIntervalMs = 1000;
 export type NominatimResult = z.infer<typeof nominatimResultSchema>;
 
 export type NominatimClient = {
-	searchBoundary: (query: string) => Promise<NominatimResult | null>;
+	searchBoundary: (
+		query: string,
+		allowPoint?: boolean,
+	) => Promise<NominatimResult | null>;
 };
 
 export function createNominatimClient(): NominatimClient {
@@ -32,6 +35,7 @@ export function createNominatimClient(): NominatimClient {
 
 	const searchBoundary = async (
 		query: string,
+		allowPoint = false,
 	): Promise<NominatimResult | null> =>
 		observe("api.completed", { service: "nominatim" }, async (setStatus) => {
 			const turn = nextRequest.then(rateLimit);
@@ -42,7 +46,8 @@ export function createNominatimClient(): NominatimClient {
 			url.searchParams.set("q", query);
 			url.searchParams.set("format", "json");
 			url.searchParams.set("polygon_geojson", "1");
-			url.searchParams.set("limit", "1");
+			url.searchParams.set("limit", "5");
+			url.searchParams.set("addressdetails", "1");
 
 			const response = await fetch(url, {
 				signal: AbortSignal.timeout(30_000),
@@ -66,7 +71,41 @@ export function createNominatimClient(): NominatimClient {
 				rawBody ? JSON.parse(rawBody) : [],
 			);
 
-			return results[0] ?? null;
+			const first = results[0];
+			if (
+				first &&
+				!allowPoint &&
+				first.geojson?.type !== "Polygon" &&
+				first.geojson?.type !== "MultiPolygon"
+			) {
+				const address = first.address;
+				const district =
+					address && typeof address === "object" && "state_district" in address
+						? address.state_district
+						: undefined;
+				const country =
+					address && typeof address === "object" && "country" in address
+						? address.country
+						: undefined;
+				const suggestedQuery =
+					typeof district === "string" && typeof country === "string"
+						? `${district}, ${country}`
+						: undefined;
+				if (results.length > 1 || suggestedQuery) {
+					const candidates = results.map((place) => ({
+						displayName: place.display_name,
+						osmType: place.osm_type,
+						osmId: place.osm_id,
+						geometryType: place.geojson?.type,
+						placeType: place.addresstype,
+					}));
+					throw new ApiError(
+						`The best match is a point or line, not an area boundary. Choose the intended place and repeat get-geoboundary with a more specific query, or provide bufferMeters explicitly for the point. Region or district boundaries may cover a different area than the city. ${JSON.stringify({ candidates, suggestedBoundaryQuery: suggestedQuery })}`,
+						"PLACE_SELECTION_REQUIRED",
+					);
+				}
+			}
+			return first ?? null;
 		});
 
 	return {

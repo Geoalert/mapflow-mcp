@@ -100,6 +100,9 @@ export function createServer(
 		server.registerTool<z.ZodObject, z.ZodObject<S>>(
 			name,
 			{
+				title: name
+					.replaceAll("-", " ")
+					.replace(/^./, (letter) => letter.toUpperCase()),
 				description,
 				inputSchema: schema,
 				outputSchema: output,
@@ -186,9 +189,9 @@ export function createServer(
 	);
 	register(
 		"get-project",
-		"Get a project by UUID, or resolve the user's default project using projectId='default'.",
+		"Get compact project metadata (ID, name, dates, area and processing counts) by UUID or projectId='default'. Model definitions and prices are available from list-models.",
 		input.getProjectSchema,
-		api.projectSchema,
+		api.projectSchema.omit({ workflowDefs: true }),
 		(a, e) => client(e).getProject(a.projectId),
 	);
 	register(
@@ -294,7 +297,7 @@ export function createServer(
 	);
 	register(
 		"get-geoboundary",
-		"Search OpenStreetMap for a place. Points and lines require an explicit positive bufferMeters. Returns a cached geometryId and summary; geometryMode=simplified requests an overview; full (or legacy includeGeometry=true) requires explicit maxOutputBytes and may be withheld with a warning. IDs expire after inactivity or server restart. Polygon geometry is not silently simplified.",
+		"Search OpenStreetMap for a place. Ambiguous point matches return compact place choices and suggested queries; region boundaries are not silently substituted for cities. Points and lines require an explicit positive bufferMeters. Returns a cached geometryId and summary; geometryMode=simplified requests an overview; full (or legacy includeGeometry=true) requires explicit maxOutputBytes and may be withheld with a warning. IDs expire after inactivity or server restart. Polygon geometry is not silently simplified.",
 		geometryTools.geoboundaryToolSchema,
 		geometryTools.cachedGeometrySchema.extend({
 			displayName: z.string(),
@@ -305,7 +308,10 @@ export function createServer(
 		async (a, e) => {
 			const { options } = splitGeometryOutput(a);
 			const presenter = createGeometryOutput(geometryCache, owner(e), options);
-			const found = await nominatim.searchBoundary(a.query);
+			const found = await nominatim.searchBoundary(
+				a.query,
+				Boolean(a.bufferMeters && a.bufferMeters > 0),
+			);
 			if (!found?.geojson)
 				throw new ApiError("No geometry found for this place", "NOT_FOUND");
 			const geometry = found.geojson;
@@ -374,7 +380,7 @@ export function createServer(
 	);
 	register(
 		"start-processing",
-		"Accept geometry or cached geometryId. After GEOMETRY_EXPIRED, obtain a new geometry and recalculate cost. Start a paid processing ONLY after the user confirms the cost for these exact parameters. For partial mosaic failures explain the warning before calling. On timeout check list-processings; never automatically retry.",
+		"Start a paid processing for geometry or cached geometryId using the specified model and imagery. Charges account credits and creates a new processing on each call. calculate-cost estimates the price for the same parameters. Partial mosaic failures are returned as warnings. An expired geometryId requires a fresh geometry and estimate. A timeout leaves the outcome unknown; list-processings can locate the processing before any retry.",
 		geometryTools.createProcessingToolSchema,
 		api.processingOutputSchema.extend({ warnings: z.array(z.string()) }),
 		(a, e) =>

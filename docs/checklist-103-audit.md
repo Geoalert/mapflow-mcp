@@ -31,3 +31,11 @@
 - DCR: временный клиент создан и удалён; токены не выводились и не сохранялись в репозитории.
 - Новые исправления на duty не развёрнуты. Прямой smoke локального клиента не состоялся из-за HTTP 401 локального API-токена. Нельзя считать его пройденным.
 - Для закрытия нужны: выкладка MCP, живая сверка стоимости доступной мозаики с веб-формой, скачивание собственного GeoJSON, проверка составного Roscosmos preview и полные входы Cursor/VS Code/ChatGPT с визуальной проверкой consent.
+
+## Submission follow-up, 2026-11-10
+
+- `get-project` publishes compact project fields without workflow definitions; use `list-models` for models, blocks and prices.
+- `get-geoboundary` examines up to five Nominatim matches. When the leading point has alternatives or administrative address context, `PLACE_SELECTION_REQUIRED` returns compact candidates and an optional boundary query. Explicit buffering retains the original point. No city-to-region substitution is automatic. Arusha Municipal, Tanzania is the disambiguated municipality query.
+- Read-only processing metadata/statistics/result 404 errors explain that the processing or data is missing or inaccessible and direct callers to `list-projects`, `list-processings`, and status checking. Authentication and authorization errors remain distinct.
+- Every tool publishes a display title. `start-processing` describes charging and side effects without instructions to the assistant; its write/destructive/non-idempotent annotations remain.
+- Validation: `bun validate`, 147 tests including compact project fixtures, Nominatim ambiguity, explicit point selection and 401/403 preservation. Live deployment verification is reported separately; historical entries above describe their respective versions.
