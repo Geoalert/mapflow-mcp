@@ -257,3 +257,12 @@ REST: `POST /rest/catalog/meta`, geometry → `aoi`. Источник: `rest/jso
 - Статистика READY с нулём отличается от COMPUTING/FAILED; единицы преобразуются без потери исходных значений.
 - Проверить `tools/list`, входные/выходные схемы и ошибки `isError` через MCP, а не только прямые REST mocks.
 - После изменений кода обязательны `bun validate` и подходящие `bun test`. При реализации проверки выполняются; платные интеграционные запуски не входят в локальные тесты.
+
+### ArcGIS metadata lookup: MCP contract, 2026-11-10
+
+`get-image-metadata` with `dataProvider=arcgis_world_imagery` returns
+`UNSUPPORTED_OPERATION` before contacting the backend. ArcGIS lookup by ID remains
+unsupported; use metadata from `search-imagery-catalog`, repeating the same area
+and filters when needed. Without `dataProvider`, the MCP cannot infer the provider
+from an opaque image ID and retains the ordinary lookup behavior. Other providers
+retain their existing routing, `NOT_FOUND`, and `AMBIGUOUS_IMAGE` errors.

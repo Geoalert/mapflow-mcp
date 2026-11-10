@@ -281,7 +281,7 @@ export function createServer(
 	);
 	register(
 		"get-image-metadata",
-		"Get catalog image metadata and compact footprint/preview summaries by opaque image ID. geometryMode=simplified requests overview contours; full requires explicit maxOutputBytes and may be withheld with a warning. Use previews (each with a contour summary and url) for composite imagery such as Roscosmos; previewUrl alone can be incomplete. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. Use dataProvider=maxar only for the legacy Maxar catalog.",
+		"Get catalog image metadata and compact footprint/preview summaries by opaque image ID. geometryMode=simplified requests overview contours; full requires explicit maxOutputBytes and may be withheld with a warning. Use previews (each with a contour summary and url) for composite imagery such as Roscosmos; previewUrl alone can be incomplete. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. ArcGIS World Imagery (dataProvider=arcgis_world_imagery) does not support lookup by ID; use the metadata returned by search-imagery-catalog instead. Use dataProvider=maxar only for the legacy Maxar catalog.",
 		geometryTools.imageMetadataToolSchema,
 		presentation.imageOutputSchema,
 		async (a, e) => {
