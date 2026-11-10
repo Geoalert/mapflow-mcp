@@ -167,6 +167,7 @@ test("tools/list exposes 19 tools, with creation and processing as non-idempoten
 	);
 	for (const t of tools) {
 		expect(t.outputSchema?.type).toBe("object");
+		expect(t.title).toBeTruthy();
 		const write = ["start-processing", "create-project"].includes(t.name);
 		expect(t.annotations?.readOnlyHint).toBe(!write);
 		expect(t.annotations?.idempotentHint).toBe(!write);
@@ -973,6 +974,65 @@ test("every geometry tool applies summary, simplified, full and legacy budget ru
 				arguments: { ...args, ...options },
 			});
 			expect(result.isError).toBe(true);
+		}
+	}
+});
+
+test("project output omits workflow definitions and directs model lookup", async () => {
+	responseOverride = () =>
+		Response.json({
+			id,
+			name: "Compact",
+			processingCounts: { OK: 3 },
+			workflowDefs: [
+				{
+					name: "Large workflow",
+					blocks: [{ name: "Hidden block", price: 42 }],
+				},
+			],
+		});
+	const result = await client.callTool({
+		name: "get-project",
+		arguments: { projectId: "default" },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(JSON.stringify(result)).not.toContain("workflowDefs");
+	expect(JSON.stringify(result)).not.toContain("Hidden block");
+	expect(result.structuredContent).toMatchObject({
+		id,
+		name: "Compact",
+		processingCounts: { OK: 3 },
+	});
+	const { tools } = await client.listTools();
+	expect(tools.find((t) => t.name === "get-project")?.description).toContain(
+		"list-models",
+	);
+	const start = tools.find((t) => t.name === "start-processing");
+	expect(start?.description).toContain("Charges account credits");
+	expect(start?.description).not.toContain("ONLY");
+});
+
+test("missing processing data gives recovery guidance without masking authorization errors", async () => {
+	for (const status of [404, 403, 401]) {
+		responseOverride = () => new Response("", { status });
+		for (const name of [
+			"get-processing",
+			"get-processing-statistics",
+			"get-processing-result",
+		]) {
+			const result = await client.callTool({
+				name,
+				arguments: { processingId: id },
+			});
+			expect(result.isError).toBe(true);
+			const content = JSON.stringify(result.content);
+			expect(content).toContain(
+				status === 404 ? "NOT_FOUND" : `HTTP_${status}`,
+			);
+			if (status === 404) {
+				expect(content).toContain("list-processings");
+				expect(content).toContain("not accessible");
+			}
 		}
 	}
 });

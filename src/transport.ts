@@ -55,6 +55,17 @@ export function createTransport(credentials: ApiCredentials) {
 		setStatus(response.status);
 		if (!response.ok) {
 			await response.body?.cancel();
+			if (
+				response.status === 404 &&
+				(!init?.method || init.method === "GET") &&
+				/^\/rest\/processings\/[^/]+\/(v2|statistics|result(?:\/original)?)$/.test(
+					path,
+				)
+			)
+				throw new ApiError(
+					"The requested processing or its data was not found or is not accessible to this account. Use list-projects and then list-processings with the projectId to find an accessible processing; use get-processing to check its status before requesting results or statistics.",
+					"NOT_FOUND",
+				);
 			throw new ApiError(
 				`Mapflow API request failed: ${response.status}${unknownOutcome && response.status >= 500 ? `. ${unknownOutcome}` : ""}`,
 				`HTTP_${response.status}`,

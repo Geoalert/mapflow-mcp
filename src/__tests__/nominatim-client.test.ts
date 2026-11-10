@@ -44,6 +44,62 @@ describe("NominatimClient rate limiting", () => {
 		globalThis.fetch = originalFetch;
 	});
 
+	test("city point plus region polygon requires selection instead of silently choosing a region", async () => {
+		const point = {
+			...mockNominatimResponse[0],
+			display_name: "Arusha city",
+			geojson: { type: "Point", coordinates: [36.68, -3.37] },
+		};
+		mockFetch.mockImplementation(() =>
+			Promise.resolve(
+				Response.json([
+					point,
+					{ ...mockNominatimResponse[0], display_name: "Arusha region" },
+				]),
+			),
+		);
+		await expect(
+			createNominatimClient().searchBoundary("Arusha"),
+		).rejects.toMatchObject({ code: "PLACE_SELECTION_REQUIRED" });
+		const result = await createNominatimClient().searchBoundary("Arusha", true);
+		expect(result?.geojson?.type).toBe("Point");
+	});
+	test("council office suggests an administrative query without leaking coordinates", async () => {
+		mockFetch.mockImplementation(() =>
+			Promise.resolve(
+				Response.json([
+					{
+						...mockNominatimResponse[0],
+						geojson: { type: "Point", coordinates: [36.68, -3.37] },
+						address: {
+							state_district: "Arusha Municipal",
+							country: "Tanzania",
+						},
+					},
+				]),
+			),
+		);
+		try {
+			await createNominatimClient().searchBoundary(
+				"Arusha City Council, Tanzania",
+			);
+			throw new Error("Expected selection");
+		} catch (error) {
+			expect(error).toMatchObject({ code: "PLACE_SELECTION_REQUIRED" });
+			expect(String(error)).toContain("Arusha Municipal, Tanzania");
+			expect(String(error)).not.toContain("coordinates");
+		}
+	});
+	test("a polygon boundary is returned directly", async () => {
+		expect(
+			(
+				await createNominatimClient().searchBoundary(
+					"Arusha Municipal, Tanzania",
+				)
+			)?.geojson?.type,
+		).toBe("Polygon");
+	});
+
 	test("first request executes without delay", async () => {
 		const client = createNominatimClient();
 		const start = Date.now();
