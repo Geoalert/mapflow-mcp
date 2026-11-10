@@ -331,3 +331,70 @@ for (const scenario of [
 			f.provider.stop(true);
 		}
 	});
+
+test("OAuth geometry cache survives token refresh and isolates verified subjects", async () => {
+	const f = await fixture();
+	try {
+		const handle = createHttpHandler(f.config);
+		const call = async (
+			subject: string,
+			args: Record<string, unknown>,
+			nonce: string,
+		) => {
+			f.changeTarget(subject, "mapflow");
+			const token = await f.sign({
+				aud: f.config.resource,
+				sub: subject,
+				nonce,
+			});
+			const response = await handle(
+				new Request(f.config.resource, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${token}`,
+						"Content-Type": "application/json",
+						Accept: "application/json, text/event-stream",
+					},
+					body: JSON.stringify({
+						jsonrpc: "2.0",
+						id: 1,
+						method: "tools/call",
+						params: { name: "buffer-aoi", arguments: args },
+					}),
+				}),
+			);
+			expect(response.status).toBe(200);
+			return (
+				(await response.json()) as {
+					result: {
+						isError?: boolean;
+						structuredContent: { geometryId: string };
+						content: unknown;
+					};
+				}
+			).result;
+		};
+		const first = await call(
+			"user-1",
+			{ geometry: { type: "Point", coordinates: [0, 0] }, distanceMeters: 100 },
+			"old",
+		);
+		expect(first.isError).not.toBe(true);
+		const geometryId = first.structuredContent.geometryId;
+		const refreshed = await call(
+			"user-1",
+			{ geometryId, distanceMeters: 10 },
+			"new",
+		);
+		expect(refreshed.isError).not.toBe(true);
+		const foreign = await call(
+			"user-2",
+			{ geometryId, distanceMeters: 10 },
+			"other",
+		);
+		expect(foreign.isError).toBe(true);
+		expect(JSON.stringify(foreign.content)).toContain("GEOMETRY_EXPIRED");
+	} finally {
+		f.provider.stop(true);
+	}
+});

@@ -126,6 +126,30 @@ Inputs use camelCase. Lists default to `limit: 20`, `offset: 0` (limit 1–100).
 AOIs must be valid WGS84 Polygon/MultiPolygon geometries. Points and lines from
 geocoding require an explicit positive `bufferMeters`.
 
+`get-geoboundary` and `buffer-aoi` return a compact summary with `geometryId`,
+`expiresAt`, bbox and area. Set `includeGeometry: true` to also receive full
+GeoJSON. `buffer-aoi`, `search-imagery-catalog`, `calculate-cost` and
+`start-processing` accept either `geometryId` or direct `geometry`, never both.
+Cost also accepts `areaSqKm` instead of either geometry input for preliminary
+estimates. Existing direct GeoJSON inputs remain supported.
+
+Geometry is kept only in process memory: 24 hours of inactivity, at most 1,000
+entries and 32 MiB of serialized geometry payload across users. Reads refresh
+the TTL; `expiresAt` reflects expiry at creation. Expired entries are removed on
+cache access, and least recently used entries are evicted when capacity is
+needed. A geometry larger than the byte budget fails with `GEOMETRY_TOO_LARGE`.
+OAuth entries are scoped to the verified issuer/subject, surviving token refresh;
+API-token entries are scoped to a hash of the token (including the configured
+single-user environment token). Buffering creates a new ID and preserves the
+original geometry. Coordinates and owner keys are not logged.
+
+Use one MCP replica, or route a user's calls consistently to the same replica.
+The cache is shared across HTTP requests but is neither persisted nor replicated.
+Restart, expiry, eviction or an inaccessible ID returns `GEOMETRY_EXPIRED` before
+any processing is submitted. Repeat geocoding and buffers (or supply GeoJSON),
+then recalculate cost and obtain confirmation before launching. The server does
+not automatically reconstruct geometry or retry a paid launch.
+
 For `get-image-metadata`, pass `imageId`, `dataProvider` and, when available,
 `zoom` from the catalog search result. The server uses the multi-provider
 `/rest/catalog/{imageId}` route and rejects ambiguous matches instead of silently

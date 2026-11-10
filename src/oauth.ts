@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import * as z from "zod";
+import { geometryOwner } from "./geometry-cache.js";
 
 const secureUrl = z.url().refine((value) => {
 	const url = new URL(value);
@@ -163,7 +164,11 @@ export function createOAuth(config: OAuthConfig) {
 				const target = await verify(result.access_token, config.audience);
 				if (target.sub !== source.sub || target.typ !== "Bearer")
 					throw new Error("Exchange identity mismatch");
-				return { scheme: "Bearer" as const, token: result.access_token };
+				return {
+					scheme: "Bearer" as const,
+					token: result.access_token,
+					geometryOwner: geometryOwner(JSON.stringify([issuer, source.sub])),
+				};
 			} catch {
 				throw new OAuthError(502, "token_exchange_failed");
 			}

@@ -102,6 +102,30 @@ test("HTTP entrypoint supports repeated requests and independent clients", async
 				remainingCredits: n === 0 ? 10 : 20,
 			});
 		}
+		const first = clients[0];
+		const second = clients[1];
+		if (!first || !second) throw new Error("Missing test clients");
+		const buffered = await first.callTool({
+			name: "buffer-aoi",
+			arguments: {
+				geometry: { type: "Point", coordinates: [0, 0] },
+				distanceMeters: 100,
+			},
+		});
+		expect(buffered.isError).not.toBe(true);
+		const geometryId = (buffered.structuredContent as Record<string, unknown>)
+			?.geometryId;
+		const own = await first.callTool({
+			name: "buffer-aoi",
+			arguments: { geometryId, distanceMeters: 10 },
+		});
+		expect(own.isError).not.toBe(true);
+		const foreign = await second.callTool({
+			name: "buffer-aoi",
+			arguments: { geometryId, distanceMeters: 10 },
+		});
+		expect(foreign.isError).toBe(true);
+		expect(JSON.stringify(foreign.content)).toContain("GEOMETRY_EXPIRED");
 	} finally {
 		for (const c of clients) await c.close();
 		child.kill();

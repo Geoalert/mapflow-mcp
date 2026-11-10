@@ -53,6 +53,8 @@ const codes = new Set([
 	"INVALID_PROVIDER",
 	"MOSAIC_NOT_READY",
 	"BUFFER_REQUIRED",
+	"GEOMETRY_EXPIRED",
+	"GEOMETRY_TOO_LARGE",
 	"invalid_token",
 	"insufficient_scope",
 	"token_exchange_failed",
