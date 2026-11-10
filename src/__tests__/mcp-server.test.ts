@@ -427,7 +427,6 @@ test("catalog metadata uses provider routing and explicit zoom without losing ot
 			{ ...image, zoom: 18 },
 		]);
 	for (const [dataProvider, expectedProvider] of [
-		["arcgis_world_imagery", "cgmosaic"],
 		["CG_mosaic_2022", "cgmosaic"],
 		["orbview_sv1", "orbview"],
 		["roscosmos", "roscosmos"],
@@ -462,6 +461,29 @@ test("catalog metadata uses provider routing and explicit zoom without losing ot
 	});
 	expect(missing.isError).toBe(true);
 	expect(JSON.stringify(missing.content)).toContain("NOT_FOUND");
+});
+
+test("ArcGIS metadata explains unsupported lookup without calling the backend", async () => {
+	for (const zoom of [undefined, 17, 18]) {
+		const result = await client.callTool({
+			name: "get-image-metadata",
+			arguments: {
+				imageId: "601024",
+				dataProvider: "arcgis_world_imagery",
+				...(zoom === undefined ? {} : { zoom }),
+			},
+		});
+		expect(result.isError).toBe(true);
+		expect(JSON.stringify(result.content)).toContain("UNSUPPORTED_OPERATION");
+		expect(JSON.stringify(result.content)).toContain("search-imagery-catalog");
+		expect(JSON.stringify(result.content)).not.toContain("NOT_FOUND");
+	}
+	expect(requests).toHaveLength(0);
+	const listed = await client.listTools();
+	expect(
+		listed.tools.find((tool) => tool.name === "get-image-metadata")
+			?.description,
+	).toContain("does not support lookup by ID");
 });
 
 test("Maxar metadata remains explicitly available on its legacy endpoint", async () => {

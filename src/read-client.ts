@@ -173,6 +173,11 @@ export function createReadClient(http: ApiTransport) {
 		async getImageMetadata(args: z.input<typeof input.imageMetadataSchema>) {
 			const { imageId, dataProvider, zoom } =
 				input.imageMetadataSchema.parse(args);
+			if (dataProvider === "arcgis_world_imagery")
+				throw new ApiError(
+					"ArcGIS World Imagery does not support metadata lookup by image ID. Use the metadata returned by search-imagery-catalog; repeat that search with the same area and filters if needed.",
+					"UNSUPPORTED_OPERATION",
+				);
 			if (dataProvider === "maxar")
 				return http.requestJson(
 					`/rest/catalog/meta/${encodeURIComponent(imageId)}`,
@@ -180,8 +185,7 @@ export function createReadClient(http: ApiTransport) {
 				);
 			const provider = dataProvider?.startsWith("orbview")
 				? "orbview"
-				: dataProvider === "arcgis_world_imagery" ||
-						dataProvider?.startsWith("CG_mosaic_")
+				: dataProvider?.startsWith("CG_mosaic_")
 					? "cgmosaic"
 					: dataProvider;
 			const query = new URLSearchParams();
