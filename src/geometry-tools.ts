@@ -1,6 +1,9 @@
 import * as z from "zod";
-import { geometryDetailsSchema } from "./api-schemas.js";
 import type { GeometryCache } from "./geometry-cache.js";
+import {
+	cachedGeometryOutputSchema,
+	geometryOutputFields,
+} from "./geometry-output.js";
 import * as input from "./inputs.js";
 
 // These are MCP wire schemas. The original API schema is always parsed after
@@ -17,7 +20,7 @@ function withGeometryId<S extends z.ZodRawShape & { geometry: z.ZodType }>(
 				.uuid()
 				.optional()
 				.describe(
-					"Cached geometry from get-geoboundary or buffer-aoi. Supply geometry OR geometryId, never both.",
+					"Exact cached geometry from geoboundary, buffer, mosaic or catalog output. Supply geometry OR geometryId, never both.",
 				),
 		})
 		.superRefine((value, ctx) => {
@@ -38,7 +41,10 @@ function withGeometryId<S extends z.ZodRawShape & { geometry: z.ZodType }>(
 }
 
 export const searchCatalogToolSchema = withGeometryId(
-	input.searchCatalogSchema,
+	z.strictObject({
+		...input.searchCatalogSchema.shape,
+		...geometryOutputFields,
+	}),
 );
 export const calculateCostToolSchema = withGeometryId(
 	input.calculateCostRequestSchema,
@@ -47,23 +53,16 @@ export const calculateCostToolSchema = withGeometryId(
 export const createProcessingToolSchema = withGeometryId(
 	input.createProcessingRequestSchema,
 );
-const includeGeometry = z
-	.boolean()
-	.default(false)
-	.describe(
-		"Include full GeoJSON in addition to geometryId. Defaults to a compact summary.",
-	);
-export const geoboundaryToolSchema = input.geoboundarySchema.extend({
-	includeGeometry,
-});
+export const geoboundaryToolSchema =
+	input.geoboundarySchema.extend(geometryOutputFields);
 export const bufferAoiToolSchema = withGeometryId(
-	input.bufferAoiSchema.extend({ includeGeometry }),
+	input.bufferAoiSchema.extend(geometryOutputFields),
 );
-export const cachedGeometrySchema = geometryDetailsSchema.extend({
-	geometry: geometryDetailsSchema.shape.geometry.optional(),
-	geometryId: z.uuid(),
-	expiresAt: z.iso.datetime(),
-});
+export const mosaicToolSchema =
+	input.getMosaicSchema.extend(geometryOutputFields);
+export const imageMetadataToolSchema =
+	input.imageMetadataSchema.extend(geometryOutputFields);
+export const cachedGeometrySchema = cachedGeometryOutputSchema;
 
 export function resolveGeometry<
 	T extends { geometry?: unknown; geometryId?: string },

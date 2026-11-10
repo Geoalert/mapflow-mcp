@@ -215,7 +215,11 @@ for (const [name, args] of calls)
 			expect(JSON.stringify(data)).not.toContain("footprint");
 		}
 		if (name === "get-mosaic") {
-			expect(data.geometry).toEqual(geometry);
+			expect(data.geometry).toBeUndefined();
+			expect(data.geometrySummary).toMatchObject({
+				geometryIncluded: false,
+				vertexCount: 5,
+			});
 			expect(data.areaM2).toBeGreaterThan(0);
 		}
 		if (name === "get-mosaic-status") {
@@ -436,8 +440,8 @@ test("catalog metadata uses provider routing and explicit zoom without losing ot
 		expect(result.structuredContent).toMatchObject({
 			id: image.id,
 			zoom: 18,
-			footprint: geometry,
-			previews: image.previews,
+			footprintSummary: expect.objectContaining({ geometryIncluded: false }),
+			previews: [expect.objectContaining({ url: image.previews[0]?.url })],
 		});
 		expect(requests.at(-1)?.url.pathname).toBe(
 			`/rest/catalog/${encodeURIComponent(image.id)}`,
@@ -588,7 +592,12 @@ test("catalog excludes inactive providers and preserves real selected-provider e
 		hasNext: true,
 		total: 120,
 		providerErrors: [selected, outage],
-		items: [{ footprint: geometry, previews: image.previews }],
+		items: [
+			{
+				footprintSummary: expect.objectContaining({ geometryIncluded: false }),
+				previews: [expect.objectContaining({ url: image.previews[0]?.url })],
+			},
+		],
 	});
 	await client.callTool({
 		name: "search-imagery-catalog",
@@ -808,7 +817,7 @@ test("cached boundary feeds catalog, cost and launch without leaking coordinates
 test("buffer creates a new ID and optional GeoJSON without mutating the original", async () => {
 	const boundary = await client.callTool({
 		name: "get-geoboundary",
-		arguments: { query: "Test", includeGeometry: true },
+		arguments: { query: "Test", includeGeometry: true, maxOutputBytes: 32768 },
 	});
 	const geometryId = (boundary.structuredContent as Record<string, unknown>)
 		?.geometryId;
@@ -817,7 +826,12 @@ test("buffer creates a new ID and optional GeoJSON without mutating the original
 	).toEqual(geometry);
 	const buffered = await client.callTool({
 		name: "buffer-aoi",
-		arguments: { geometryId, distanceMeters: 100, includeGeometry: true },
+		arguments: {
+			geometryId,
+			distanceMeters: 100,
+			includeGeometry: true,
+			maxOutputBytes: 32768,
+		},
 	});
 	expect(buffered.isError).not.toBe(true);
 	expect(
@@ -885,4 +899,58 @@ test("reference inputs retain original cross-field validation", async () => {
 		expect(result.isError).toBe(true);
 	}
 	expect(requests).toHaveLength(0);
+});
+
+test("every geometry tool applies summary, simplified, full and legacy budget rules", async () => {
+	const names = [
+		"get-geoboundary",
+		"buffer-aoi",
+		"get-mosaic",
+		"search-imagery-catalog",
+		"get-image-metadata",
+	];
+	for (const [name, args] of calls.filter(([name]) => names.includes(name))) {
+		for (const options of [
+			{},
+			{ geometryMode: "full" },
+			{ includeGeometry: true },
+		]) {
+			const result = await client.callTool({
+				name,
+				arguments: { ...args, ...options },
+			});
+			expect(result.isError).not.toBe(true);
+			expect(JSON.stringify(result)).not.toContain('"coordinates"');
+			if ("geometryMode" in options || "includeGeometry" in options)
+				expect(JSON.stringify(result)).toContain("maxOutputBytes");
+		}
+		for (const options of [
+			{ geometryMode: "simplified", maxVertices: 20 },
+			{ geometryMode: "full", maxOutputBytes: 32768 },
+			{ includeGeometry: true, maxOutputBytes: 32768 },
+		]) {
+			const result = await client.callTool({
+				name,
+				arguments: { ...args, ...options },
+			});
+			expect(result.isError).not.toBe(true);
+			expect(JSON.stringify(result.structuredContent)).toContain(
+				'"coordinates"',
+			);
+			expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(
+				32768,
+			);
+		}
+		for (const options of [
+			{ geometryMode: "full", maxOutputBytes: 262145 },
+			{ geometryMode: "summary", includeGeometry: true },
+			{ geometryMode: "simplified", maxVertices: 1001 },
+		]) {
+			const result = await client.callTool({
+				name,
+				arguments: { ...args, ...options },
+			});
+			expect(result.isError).toBe(true);
+		}
+	}
 });
