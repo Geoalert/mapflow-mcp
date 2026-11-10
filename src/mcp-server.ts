@@ -10,6 +10,11 @@ import * as z from "zod";
 import * as api from "./api-schemas.js";
 import { bufferGeometry, geometryDetails } from "./geometry.js";
 import { GeometryCache, geometryOwner } from "./geometry-cache.js";
+import {
+	createGeometryOutput,
+	splitGeometryOutput,
+} from "./geometry-output.js";
+import * as presentation from "./geometry-presentation.js";
 import * as geometryTools from "./geometry-tools.js";
 import * as input from "./inputs.js";
 import { recordToolError } from "./logging.js";
@@ -66,18 +71,6 @@ export function createServer(
 		args: T,
 		extra: Extra,
 	) => geometryTools.resolveGeometry(args, geometryCache, () => owner(extra));
-	const cacheDetails = (
-		details: ReturnType<typeof geometryDetails>,
-		cacheOwner: string,
-		includeGeometry: boolean,
-	) => {
-		const { geometry, ...summary } = details;
-		return {
-			...summary,
-			...geometryCache.put(cacheOwner, geometry),
-			...(includeGeometry ? { geometry } : {}),
-		};
-	};
 	const nominatim = options.nominatim ?? createNominatimClient();
 	const client = (extra: Extra) => {
 		if (options.getClient) return options.getClient(extra);
@@ -207,10 +200,18 @@ export function createServer(
 	);
 	register(
 		"get-mosaic",
-		"Get mosaic metadata and its footprint converted to GeoJSON; invalid footprints produce a warning.",
-		input.getMosaicSchema,
-		api.mosaicDetailsSchema,
-		(a, e) => client(e).getMosaic(a.mosaicId),
+		"Get mosaic metadata and a compact footprint summary with geometryId. geometryMode=simplified requests an overview; full requires explicit maxOutputBytes and may be withheld with a warning.",
+		geometryTools.mosaicToolSchema,
+		presentation.mosaicOutputSchema,
+		async (a, e) => {
+			const { options } = splitGeometryOutput(a);
+			const presenter = createGeometryOutput(geometryCache, owner(e), options);
+			const { geometry, ...metadata } = await client(e).getMosaic(a.mosaicId);
+			const contour = presenter.present(geometry);
+			const result = { ...metadata, geometrySummary: contour?.summary ?? null };
+			presenter.attach(result, "geometry", contour);
+			return presenter.finish(result);
+		},
 	);
 	register(
 		"get-mosaic-status",
@@ -261,26 +262,39 @@ export function createServer(
 	);
 	register(
 		"search-imagery-catalog",
-		"Search imagery by geometry or cached geometryId and filters without changing any selection. Results are paginated: use sortBy/sortOrder for the user's selection criterion and follow hasNext with offset + count before claiming the best image across all matches. Unknown and inactive provider names are rejected. Resolution is meters per pixel; angles are degrees.",
+		"Search imagery by geometry or cached geometryId and filters without changing any selection. Contours and preview geometries are compact summaries by default; geometryMode=simplified requests overviews, full requires explicit maxOutputBytes and may be withheld with a warning. Results are paginated: use sortBy/sortOrder for the user's selection criterion and follow hasNext with offset + count before claiming the best image across all matches. Unknown and inactive provider names are rejected. Resolution is meters per pixel; angles are degrees.",
 		geometryTools.searchCatalogToolSchema,
-		api
-			.pageOutputSchema(api.catalogImageSchema)
-			.extend({ providerErrors: z.unknown() }),
-		(a, e) =>
-			client(e).searchImageryCatalog(
-				input.searchCatalogSchema.parse(resolve(a, e)),
-			),
+		presentation.catalogOutputSchema,
+		async (a, e) => {
+			const { input: args, options } = splitGeometryOutput(a);
+			const presenter = createGeometryOutput(geometryCache, owner(e), options);
+			const result = await client(e).searchImageryCatalog(
+				input.searchCatalogSchema.parse(resolve(args, e)),
+			);
+			return presenter.finish({
+				...result,
+				items: result.items.map((image) =>
+					presentation.presentImage(image, presenter),
+				),
+			});
+		},
 	);
 	register(
 		"get-image-metadata",
-		"Get catalog image metadata and footprint by opaque image ID. Use previews (each with geometry and url) for composite imagery such as Roscosmos; previewUrl alone can be incomplete. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. Use dataProvider=maxar only for the legacy Maxar catalog.",
-		input.imageMetadataSchema,
-		api.catalogImageSchema,
-		(a, e) => client(e).getImageMetadata(a),
+		"Get catalog image metadata and compact footprint/preview summaries by opaque image ID. geometryMode=simplified requests overview contours; full requires explicit maxOutputBytes and may be withheld with a warning. Use previews (each with a contour summary and url) for composite imagery such as Roscosmos; previewUrl alone can be incomplete. Pass dataProvider and zoom from search-imagery-catalog to disambiguate variants. Use dataProvider=maxar only for the legacy Maxar catalog.",
+		geometryTools.imageMetadataToolSchema,
+		presentation.imageOutputSchema,
+		async (a, e) => {
+			const { input: args, options } = splitGeometryOutput(a);
+			const presenter = createGeometryOutput(geometryCache, owner(e), options);
+			const image = await client(e).getImageMetadata(args);
+			if (!image) throw new ApiError("Image not found", "NOT_FOUND");
+			return presenter.finish(presentation.presentImage(image, presenter));
+		},
 	);
 	register(
 		"get-geoboundary",
-		"Search OpenStreetMap for a place. Points and lines require an explicit positive bufferMeters. Returns a cached geometryId and summary; includeGeometry=true returns GeoJSON too. IDs expire after inactivity or server restart. Polygon geometry is not silently simplified.",
+		"Search OpenStreetMap for a place. Points and lines require an explicit positive bufferMeters. Returns a cached geometryId and summary; geometryMode=simplified requests an overview; full (or legacy includeGeometry=true) requires explicit maxOutputBytes and may be withheld with a warning. IDs expire after inactivity or server restart. Polygon geometry is not silently simplified.",
 		geometryTools.geoboundaryToolSchema,
 		geometryTools.cachedGeometrySchema.extend({
 			displayName: z.string(),
@@ -289,7 +303,8 @@ export function createServer(
 			appliedBufferMeters: z.number(),
 		}),
 		async (a, e) => {
-			const cacheOwner = owner(e);
+			const { options } = splitGeometryOutput(a);
+			const presenter = createGeometryOutput(geometryCache, owner(e), options);
 			const found = await nominatim.searchBoundary(a.query);
 			if (!found?.geojson)
 				throw new ApiError("No geometry found for this place", "NOT_FOUND");
@@ -307,34 +322,44 @@ export function createServer(
 				a.bufferMeters && a.bufferMeters > 0
 					? bufferGeometry(geometry, a.bufferMeters)
 					: geometryDetails(geometry);
-			return {
-				...cacheDetails(details, cacheOwner, a.includeGeometry),
+			const contour = presenter.present(details.geometry);
+			if (!contour) throw new ApiError("Invalid boundary", "INVALID_RESPONSE");
+			const result = {
+				...contour.summary,
 				displayName: found.display_name,
 				osmId: found.osm_id,
 				osmType: found.osm_type,
 				appliedBufferMeters: a.bufferMeters ?? 0,
 			};
+			presenter.attach(result, "geometry", contour);
+			Object.assign(result, contour.summary);
+			return presenter.finish(result);
 		},
 	);
 	register(
 		"buffer-aoi",
-		"Buffer geometry or geometryId by distanceMeters. Returns a new cached geometryId and summary without changing the original. Set includeGeometry=true for GeoJSON. Recalculate cost for the new ID.",
+		"Buffer geometry or geometryId by distanceMeters. Returns a new cached geometryId and summary without changing the original. geometryMode=simplified requests an overview; full (or legacy includeGeometry=true) requires explicit maxOutputBytes and may be withheld with a warning. Recalculate cost for the new ID.",
 		geometryTools.bufferAoiToolSchema,
 		geometryTools.cachedGeometrySchema.extend({
 			appliedBufferMeters: z.number(),
 		}),
 		(a, e) => {
-			const cacheOwner = owner(e);
-			const { includeGeometry, ...args } = a;
+			const { input: args, options } = splitGeometryOutput(a);
+			const presenter = createGeometryOutput(geometryCache, owner(e), options);
 			const resolved = input.bufferAoiSchema.parse(resolve(args, e));
 			const details = bufferGeometry(
 				resolved.geometry,
 				resolved.distanceMeters,
 			);
-			return {
-				...cacheDetails(details, cacheOwner, includeGeometry),
+			const contour = presenter.present(details.geometry);
+			if (!contour) throw new ApiError("Invalid buffer", "INVALID_RESPONSE");
+			const result = {
+				...contour.summary,
 				appliedBufferMeters: details.appliedBufferMeters,
 			};
+			presenter.attach(result, "geometry", contour);
+			Object.assign(result, contour.summary);
+			return presenter.finish(result);
 		},
 	);
 	register(

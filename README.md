@@ -126,12 +126,40 @@ Inputs use camelCase. Lists default to `limit: 20`, `offset: 0` (limit 1–100).
 AOIs must be valid WGS84 Polygon/MultiPolygon geometries. Points and lines from
 geocoding require an explicit positive `bufferMeters`.
 
-`get-geoboundary` and `buffer-aoi` return a compact summary with `geometryId`,
-`expiresAt`, bbox and area. Set `includeGeometry: true` to also receive full
-GeoJSON. `buffer-aoi`, `search-imagery-catalog`, `calculate-cost` and
-`start-processing` accept either `geometryId` or direct `geometry`, never both.
-Cost also accepts `areaSqKm` instead of either geometry input for preliminary
-estimates. Existing direct GeoJSON inputs remain supported.
+Geometry output follows the same policy in `get-geoboundary`, `buffer-aoi`,
+`get-mosaic`, `search-imagery-catalog` and `get-image-metadata`, including all
+composite preview parts:
+
+- `geometryMode: "summary"` (default): geometryId, expiry, exact bbox/area,
+  vertex count and serialized full-geometry size, without coordinates.
+- `geometryMode: "simplified"`: display-only contours, up to `maxVertices`
+  (default 200, maximum 1,000) per contour and a 32 KiB total response budget.
+  If a valid overview cannot fit, return its summary. Shapes with holes are
+  not simplified if they exceed the vertex budget, to avoid changing topology.
+- `geometryMode: "full"`: requires an explicit `maxOutputBytes` acknowledgement
+  (1,024–262,144 bytes) and always includes a context-size warning. Without a
+  budget, return summaries and the warning. If the response exceeds the budget,
+  omit **all** coordinates and report `requiredOutputBytes`. Even the hard limit
+  cannot be overridden. Reduce the page size or use geometryId instead.
+
+Budgets count the entire MCP result, including both JSON text and structured
+content, across every image and preview. Summary/simplified responses are capped
+at 32 KiB; an explicit smaller budget is respected. An oversized summary fails
+with `GEOMETRY_OUTPUT_TOO_LARGE` rather than silently truncating the page.
+`includeGeometry: true` remains a deprecated alias for `full`, with exactly the
+same budget requirement; combining it with `geometryMode` is rejected.
+
+Geocoding/buffering expose summary fields at the top level. Mosaics add
+`geometrySummary`; catalog images add `footprintSummary`, and preview parts add
+`geometrySummary` alongside their URL. Optional `geometry`/`footprint` fields
+appear only when coordinates are permitted. Invalid/unsupported polygons are
+omitted with a warning; missing footprints have a null summary. Exact polygons
+are cached, never replaced by simplified display contours.
+
+`buffer-aoi`, `search-imagery-catalog`, `calculate-cost` and `start-processing`
+accept either `geometryId` or direct `geometry`, never both. Cost also accepts
+`areaSqKm` instead of either geometry input for preliminary estimates.
+Existing direct GeoJSON inputs remain supported.
 
 Geometry is kept only in process memory: 24 hours of inactivity, at most 1,000
 entries and 32 MiB of serialized geometry payload across users. Reads refresh
@@ -146,7 +174,7 @@ original geometry. Coordinates and owner keys are not logged.
 Use one MCP replica, or route a user's calls consistently to the same replica.
 The cache is shared across HTTP requests but is neither persisted nor replicated.
 Restart, expiry, eviction or an inaccessible ID returns `GEOMETRY_EXPIRED` before
-any processing is submitted. Repeat geocoding and buffers (or supply GeoJSON),
+any processing is submitted. Repeat the original geocoding/mosaic/catalog lookup and buffers (or supply GeoJSON),
 then recalculate cost and obtain confirmation before launching. The server does
 not automatically reconstruct geometry or retry a paid launch.
 
@@ -157,7 +185,8 @@ selecting a different zoom. `dataProvider: "maxar"` selects the legacy Maxar-onl
 metadata endpoint. Statistics preserve nullable geometry types for empty groups
 and the backend's display names, colors, metrics and ordering.
 
-Catalog responses preserve `footprint` and composite `previews` (geometry + URL).
+Catalog responses preserve composite preview URLs and contour summaries; full
+`footprint` and preview coordinates follow the explicit geometry output policy.
 Use all preview parts for Roscosmos. Inactive Skywatch sources are excluded.
 For best-image selection, sort by the user's criterion and follow `hasNext`
 using `offset + count`; the first page alone is not the complete search result.

@@ -80,7 +80,7 @@ export class GeometryCache {
 		const entry = this.entries.get(id);
 		if (!entry || entry.owner !== owner)
 			throw new ApiError(
-				"Geometry is unavailable or expired. Repeat get-geoboundary (and any buffers), or supply GeoJSON again. Recalculate cost and obtain confirmation before start-processing.",
+				"Geometry is unavailable or expired. Repeat the original geoboundary, mosaic or catalog lookup (and any buffers), or supply GeoJSON again. Recalculate cost and obtain confirmation before start-processing.",
 				"GEOMETRY_EXPIRED",
 			);
 		entry.expiresAt = this.now() + this.ttlMs;

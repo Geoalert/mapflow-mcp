@@ -55,6 +55,8 @@ const codes = new Set([
 	"BUFFER_REQUIRED",
 	"GEOMETRY_EXPIRED",
 	"GEOMETRY_TOO_LARGE",
+	"GEOMETRY_OUTPUT_TOO_LARGE",
+	"INVALID_GEOMETRY_OUTPUT",
 	"invalid_token",
 	"insufficient_scope",
 	"token_exchange_failed",
