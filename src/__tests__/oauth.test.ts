@@ -212,7 +212,7 @@ test("OAuth HTTP discovery and challenges never fall back to the environment tok
 	}
 });
 
-test("Keycloak OAuth discovery advertises only MCP scopes and direct issuer endpoints", async () => {
+test("Keycloak OAuth discovery advertises registration and reauthorization scopes", async () => {
 	const config = {
 		issuer: "https://auth.example/auth/realms/duty",
 		resource: "https://mcp.example/mcp/oauth",
@@ -228,11 +228,23 @@ test("Keycloak OAuth discovery advertises only MCP scopes and direct issuer endp
 	const body = await response.json();
 	expect(body).toMatchObject({
 		issuer: config.issuer,
-		scopes_supported: ["openid", "mapflow:mcp"],
+		scopes_supported: ["openid", "email", "offline_access", "mapflow:mcp"],
 		code_challenge_methods_supported: ["S256"],
 		registration_endpoint: `${config.issuer}/clients-registrations/openid-connect`,
 		token_endpoint: `${config.issuer}/protocol/openid-connect/token`,
 	});
+	expect(body).toMatchObject({
+		token_endpoint_auth_methods_supported: expect.arrayContaining(["none"]),
+	});
+	expect(
+		(
+			await handle(
+				new Request(
+					"https://mcp.example/.well-known/oauth-protected-resource/mcp/oauth",
+				),
+			)
+		).status,
+	).toBe(200);
 	expect(JSON.stringify(body)).not.toContain(config.clientSecret);
 	expect(
 		(

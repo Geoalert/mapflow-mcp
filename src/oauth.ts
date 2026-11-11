@@ -81,10 +81,11 @@ export function createOAuth(config: OAuthConfig) {
 			token_endpoint: `${issuer}/protocol/openid-connect/token`,
 			registration_endpoint: `${issuer}/clients-registrations/openid-connect`,
 			jwks_uri: `${issuer}/protocol/openid-connect/certs`,
-			scopes_supported: ["openid", config.scope],
+			scopes_supported: ["openid", "email", "offline_access", config.scope],
 			response_types_supported: ["code"],
 			grant_types_supported: ["authorization_code", "refresh_token"],
 			token_endpoint_auth_methods_supported: [
+				"none",
 				"client_secret_basic",
 				"client_secret_post",
 			],
@@ -93,7 +94,7 @@ export function createOAuth(config: OAuthConfig) {
 		metadata: {
 			resource: config.resource,
 			authorization_servers: [issuer],
-			scopes_supported: [config.scope],
+			scopes_supported: [config.scope, "email", "offline_access"],
 			bearer_methods_supported: ["header"],
 		},
 		errorResponse(error: OAuthError) {
