@@ -706,7 +706,7 @@ test("GeoJSON result is delivered as a resource without exposing internal layer 
 	expect(JSON.stringify(status)).not.toContain("private.example");
 	const result = await client.callTool({
 		name: "get-processing-result",
-		arguments: { processingId: id, variant: "original" },
+		arguments: { processingId: id, variant: "original", delivery: "resource" },
 	});
 	expect(result.isError).not.toBe(true);
 	expect(result.structuredContent).toMatchObject({
@@ -1035,4 +1035,53 @@ test("missing processing data gives recovery guidance without masking authorizat
 			}
 		}
 	}
+});
+
+test("text-only clients receive complete GeoJSON by default with no resource dependency", async () => {
+	const result = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(result.structuredContent).toMatchObject({ delivery: "text" });
+	const blocks = result.content as { type: string; text?: string }[];
+	expect(blocks.every((b) => b.type === "text")).toBe(true);
+	const file = blocks.find(
+		(b) => b.text && JSON.parse(b.text).type === "FeatureCollection",
+	);
+	expect(file).toBeDefined();
+	expect(JSON.parse(file?.text ?? "null")).toEqual({
+		type: "FeatureCollection",
+		features: [],
+	});
+});
+test("large GeoJSON needs an explicit budget and returns a warning without truncation", async () => {
+	const geojson = {
+		type: "FeatureCollection",
+		features: [
+			{
+				type: "Feature",
+				geometry: null,
+				properties: { value: "x".repeat(70000) },
+			},
+		],
+	};
+	const text = JSON.stringify(geojson);
+	responseOverride = (u) =>
+		u.pathname.endsWith("/v2") ? Response.json(processing) : new Response(text);
+	const blocked = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id },
+	});
+	expect(blocked.isError).toBe(true);
+	expect(JSON.stringify(blocked.content)).toContain("RESULT_TOO_LARGE");
+	const allowed = await client.callTool({
+		name: "get-processing-result",
+		arguments: { processingId: id, maxResultBytes: 100000 },
+	});
+	expect(allowed.isError).not.toBe(true);
+	expect(allowed.content).toContainEqual({ type: "text", text });
+	expect(allowed.structuredContent).toMatchObject({
+		warnings: [expect.stringContaining("Large GeoJSON")],
+	});
 });

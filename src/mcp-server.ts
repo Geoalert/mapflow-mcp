@@ -5,6 +5,7 @@ import type {
 	EmbeddedResource,
 	ServerNotification,
 	ServerRequest,
+	TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 import * as z from "zod";
 import * as api from "./api-schemas.js";
@@ -94,7 +95,7 @@ export function createServer(
 		output: z.ZodObject,
 		handler: (args: z.output<z.ZodObject<S>>, extra: Extra) => unknown,
 		behavior: "read" | "create" | "charge" = "read",
-		attachment?: (value: unknown) => EmbeddedResource,
+		attachment?: (value: unknown) => EmbeddedResource | TextContent,
 	) {
 		server.toolNames.add(name);
 		server.registerTool<z.ZodObject, z.ZodObject<S>>(
@@ -239,13 +240,15 @@ export function createServer(
 	);
 	register(
 		"get-processing-result",
-		"Download a completed processing's GeoJSON as an embedded MCP resource (up to 5 MiB). Requires access to the processing. Save the resource text as fileName. Larger results must be downloaded in Mapflow. Does not expose a public download URL.",
+		"Retrieve a completed processing's complete GeoJSON. Default delivery=text includes the actual file contents in a text content block for clients such as Claude; save that text as fileName. delivery=resource requests an embedded MCP resource instead. maxResultBytes limits UTF-8 file size (default 65536, maximum 5242880); larger limits explicitly allow more context usage. Oversized files fail without partial content. Requires processing access; no public download URL is exposed.",
 		resultRequestSchema,
 		resultOutputSchema.omit({ text: true }),
 		(a, e) => client(e).getProcessingResult(a),
 		"read",
 		(raw) => {
 			const result = resultOutputSchema.parse(raw);
+			if (result.delivery === "text")
+				return { type: "text", text: result.text };
 			return {
 				type: "resource",
 				resource: {

@@ -5,18 +5,26 @@ import { ApiError, type ApiTransport } from "./transport.js";
 export const resultRequestSchema = z.strictObject({
 	processingId: z.uuid(),
 	variant: z.enum(["current", "original"]).default("current"),
+	delivery: z.enum(["text", "resource"]).default("text"),
+	maxResultBytes: z
+		.number()
+		.int()
+		.min(1)
+		.max(5 * 1024 * 1024)
+		.default(64 * 1024),
 });
 export const resultOutputSchema = z.object({
 	processingId: z.uuid(),
 	variant: z.enum(["current", "original"]),
 	format: z.literal("geojson"),
+	delivery: z.enum(["text", "resource"]),
+	warnings: z.array(z.string()),
 	fileName: z.string(),
 	mimeType: z.literal("application/geo+json"),
 	resourceUri: z.string(),
 	sizeBytes: z.number().int().nonnegative(),
 	text: z.string(),
 });
-const MAX_RESULT_BYTES = 5 * 1024 * 1024;
 const geojson = z.object({
 	type: z.literal("FeatureCollection"),
 	features: z.array(
@@ -32,7 +40,8 @@ export async function getProcessingResult(
 	http: ApiTransport,
 	args: z.input<typeof resultRequestSchema>,
 ) {
-	const { processingId, variant } = resultRequestSchema.parse(args);
+	const { processingId, variant, delivery, maxResultBytes } =
+		resultRequestSchema.parse(args);
 	// Keep a fresh user-scoped read even on deployments with guarded downloads.
 	const processing = await http.requestJson(
 		`/rest/processings/${processingId}/v2`,
@@ -54,10 +63,10 @@ export async function getProcessingResult(
 	);
 	const tooLarge = () =>
 		new ApiError(
-			"GeoJSON exceeds the 5 MiB MCP limit. Download the full result in Mapflow.",
+			`GeoJSON exceeds the requested ${maxResultBytes}-byte limit. Larger files consume more model context. Explicitly increase maxResultBytes (maximum 5242880) to retrieve the complete file, or download it in Mapflow. No partial GeoJSON is returned.`,
 			"RESULT_TOO_LARGE",
 		);
-	if (Number(response.headers.get("Content-Length")) > MAX_RESULT_BYTES) {
+	if (Number(response.headers.get("Content-Length")) > maxResultBytes) {
 		await response.body?.cancel();
 		throw tooLarge();
 	}
@@ -72,7 +81,7 @@ export async function getProcessingResult(
 			const { done, value } = await reader.read();
 			if (done) break;
 			sizeBytes += value.byteLength;
-			if (sizeBytes > MAX_RESULT_BYTES) throw tooLarge();
+			if (sizeBytes > maxResultBytes) throw tooLarge();
 			text += decoder.decode(value, { stream: true });
 		}
 		text += decoder.decode();
@@ -90,6 +99,13 @@ export async function getProcessingResult(
 	return {
 		processingId,
 		variant,
+		delivery,
+		warnings:
+			sizeBytes > 64 * 1024
+				? [
+						"Large GeoJSON was explicitly requested and may consume substantial model context.",
+					]
+				: [],
 		format: "geojson" as const,
 		fileName: `${processingId}-${variant}.geojson`,
 		mimeType: "application/geo+json" as const,

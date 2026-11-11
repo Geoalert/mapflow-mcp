@@ -266,3 +266,16 @@ unsupported; use metadata from `search-imagery-catalog`, repeating the same area
 and filters when needed. Without `dataProvider`, the MCP cannot infer the provider
 from an opaque image ID and retains the ordinary lookup behavior. Other providers
 retain their existing routing, `NOT_FOUND`, and `AMBIGUOUS_IMAGE` errors.
+
+### GeoJSON client compatibility, 2026-11-11
+
+`get-processing-result` defaults to `delivery=text`: metadata plus a separate
+text block containing the complete GeoJSON. `delivery=resource` preserves the
+embedded-resource representation for compatible clients. The file is emitted
+once, not in both representations, and is omitted from structured metadata.
+
+`maxResultBytes` bounds the UTF-8 file size: default 65536, maximum 5242880.
+Larger files require an explicit larger limit and include a context-size
+warning. Oversized responses fail without partial GeoJSON. The access/status
+check, authorized transport and backend file Accept header remain unchanged.
+Client-specific UI verification must be recorded separately from contract tests.

@@ -146,3 +146,23 @@ Claude or ChatGPT has connected to the deployed server.
 
 References: [OpenAI OAuth requirements](https://developers.openai.com/plugins/build/auth),
 [Claude custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+## Codex reauthorization scopes (2026-11-11)
+
+A duty Codex client registered with only `openid mapflow:mcp` (or with
+`offline_access` but without `email`) rejects later authorization requesting
+`openid email offline_access mapflow:mcp` with `invalid_scope`. An existing
+connection working does not verify this scenario.
+
+MCP discovery now advertises `email` and `offline_access` alongside the MCP
+scope, and the authorization-server metadata includes public-client method
+`none`. New clients should register all the scopes they will request on
+reauthorization. Existing DCR registrations are not changed by discovery:
+assign missing `email` and `offline_access` as Optional scopes to affected
+Codex clients, with administrator approval. Preserve consent and existing
+realm session limits; do not enable broad client permissions.
+
+Diagnostic: authorize with the complete scope set and `prompt=none` without
+cookies. `login_required` means scope validation passed; `invalid_scope` is
+still broken. This probe does not prove interactive login or refresh-token
+renewal. Temporary public DCR clients must be deleted after testing.
