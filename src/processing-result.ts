@@ -5,7 +5,7 @@ import { ApiError, type ApiTransport } from "./transport.js";
 export const resultRequestSchema = z.strictObject({
 	processingId: z.uuid(),
 	variant: z.enum(["current", "original"]).default("current"),
-	delivery: z.enum(["text", "resource"]).default("text"),
+	delivery: z.enum(["text", "resource"]).default("resource"),
 	maxResultBytes: z
 		.number()
 		.int()
@@ -100,12 +100,18 @@ export async function getProcessingResult(
 		processingId,
 		variant,
 		delivery,
-		warnings:
-			sizeBytes > 64 * 1024
+		warnings: [
+			...(delivery === "text"
+				? [
+						"Text delivery consumes model context and may be truncated by the client. Prefer delivery=resource to save the GeoJSON file; use text only when required and verify completeness before saving.",
+					]
+				: []),
+			...(sizeBytes > 64 * 1024
 				? [
 						"Large GeoJSON was explicitly requested and may consume substantial model context.",
 					]
-				: [],
+				: []),
+		],
 		format: "geojson" as const,
 		fileName: `${processingId}-${variant}.geojson`,
 		mimeType: "application/geo+json" as const,

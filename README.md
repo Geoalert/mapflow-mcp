@@ -195,7 +195,14 @@ using `offset + count`; the first page alone is not the complete search result.
 same authenticated backend transport. It returns metadata plus an embedded
 `application/geo+json` resource; save its text using `fileName`. The URI identifies
 the inline resource, not a public link or a separately stored server file.
-There is no server cache or expiry. Downloads exceeding 5 MiB are cancelled;
+Default `delivery=resource` should be saved and provided to the user as a `.geojson`
+file. Use explicit `delivery=text` only when embedded resources are unsupported or
+inline text is required; a warning explains that client truncation and context
+limits can affect text delivery. Verify completeness before saving text output.
+`maxResultBytes` defaults to 64 KiB; increase it explicitly for larger files, up to
+5 MiB. Embedded resources may also consume context depending on the client.
+There is no server cache or expiry. Downloads exceeding the requested limit fail
+without partial GeoJSON. Downloads exceeding 5 MiB are cancelled;
 larger results must be downloaded in Mapflow. Requires backend result endpoints
 with actor/AOI authorization (verified in duty backend `a5b00a4d`).
 

@@ -689,7 +689,7 @@ for (const variant of ["current", "original"]) {
 	});
 }
 
-test("GeoJSON result is delivered as a resource without exposing internal layer URLs", async () => {
+test("GeoJSON result defaults to a resource without exposing internal layer URLs", async () => {
 	responseOverride = (u) =>
 		u.pathname.endsWith("/v2")
 			? Response.json({
@@ -706,10 +706,12 @@ test("GeoJSON result is delivered as a resource without exposing internal layer 
 	expect(JSON.stringify(status)).not.toContain("private.example");
 	const result = await client.callTool({
 		name: "get-processing-result",
-		arguments: { processingId: id, variant: "original", delivery: "resource" },
+		arguments: { processingId: id, variant: "original" },
 	});
 	expect(result.isError).not.toBe(true);
 	expect(result.structuredContent).toMatchObject({
+		delivery: "resource",
+		warnings: [],
 		fileName: `${id}-original.geojson`,
 		format: "geojson",
 	});
@@ -1037,13 +1039,16 @@ test("missing processing data gives recovery guidance without masking authorizat
 	}
 });
 
-test("text-only clients receive complete GeoJSON by default with no resource dependency", async () => {
+test("text-only clients explicitly request complete GeoJSON with a truncation warning", async () => {
 	const result = await client.callTool({
 		name: "get-processing-result",
-		arguments: { processingId: id },
+		arguments: { processingId: id, delivery: "text" },
 	});
 	expect(result.isError).not.toBe(true);
-	expect(result.structuredContent).toMatchObject({ delivery: "text" });
+	expect(result.structuredContent).toMatchObject({
+		delivery: "text",
+		warnings: [expect.stringContaining("may be truncated by the client")],
+	});
 	const blocks = result.content as { type: string; text?: string }[];
 	expect(blocks.every((b) => b.type === "text")).toBe(true);
 	const file = blocks.find(
@@ -1080,7 +1085,14 @@ test("large GeoJSON needs an explicit budget and returns a warning without trunc
 		arguments: { processingId: id, maxResultBytes: 100000 },
 	});
 	expect(allowed.isError).not.toBe(true);
-	expect(allowed.content).toContainEqual({ type: "text", text });
+	expect(allowed.content).toContainEqual({
+		type: "resource",
+		resource: {
+			uri: `mapflow://processings/${id}/result/current.geojson`,
+			mimeType: "application/geo+json",
+			text,
+		},
+	});
 	expect(allowed.structuredContent).toMatchObject({
 		warnings: [expect.stringContaining("Large GeoJSON")],
 	});
