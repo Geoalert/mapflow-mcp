@@ -267,12 +267,17 @@ and filters when needed. Without `dataProvider`, the MCP cannot infer the provid
 from an opaque image ID and retains the ordinary lookup behavior. Other providers
 retain their existing routing, `NOT_FOUND`, and `AMBIGUOUS_IMAGE` errors.
 
-### GeoJSON client compatibility, 2026-11-11
+### GeoJSON client compatibility, 2026-11-12
 
-`get-processing-result` defaults to `delivery=text`: metadata plus a separate
-text block containing the complete GeoJSON. `delivery=resource` preserves the
-embedded-resource representation for compatible clients. The file is emitted
-once, not in both representations, and is omitted from structured metadata.
+`get-processing-result` defaults to `delivery=resource`: metadata plus an embedded
+MCP resource containing the complete GeoJSON. Save its contents using `fileName`
+and provide the `.geojson` file to the user instead of pasting it into the conversation.
+Use explicit `delivery=text` only for clients unable to consume embedded resources
+or when inline text is specifically required. Text delivery always includes a warning:
+it consumes model context and may be truncated by the client, so verify completeness
+before saving. Embedded resources may also consume context depending on the client.
+The file is emitted once and is omitted from structured metadata. The client saves
+the file; the resource URI is not a public download URL.
 
 `maxResultBytes` bounds the UTF-8 file size: default 65536, maximum 5242880.
 Larger files require an explicit larger limit and include a context-size

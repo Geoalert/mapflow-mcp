@@ -240,7 +240,7 @@ export function createServer(
 	);
 	register(
 		"get-processing-result",
-		"Retrieve a completed processing's complete GeoJSON. Default delivery=text includes the actual file contents in a text content block for clients such as Claude; save that text as fileName. delivery=resource requests an embedded MCP resource instead. maxResultBytes limits UTF-8 file size (default 65536, maximum 5242880); larger limits explicitly allow more context usage. Oversized files fail without partial content. Requires processing access; no public download URL is exposed.",
+		"Retrieve a completed processing's complete GeoJSON file. Default delivery=resource returns an embedded MCP resource: save its complete contents using fileName and provide the resulting .geojson file to the user. Do not paste the GeoJSON into the conversation. Use delivery=text only when the client cannot consume embedded resources or inline text is specifically required. WARNING: text delivery consumes model context and may be truncated by the client; verify completeness before saving. maxResultBytes limits UTF-8 file size (default 65536, maximum 5242880); explicitly increase it if needed for the complete file. Embedded resources may also consume context depending on the client. Oversized files fail without partial content. Requires processing access; the resource URI is not a public download URL, and the client must save the file.",
 		resultRequestSchema,
 		resultOutputSchema.omit({ text: true }),
 		(a, e) => client(e).getProcessingResult(a),
