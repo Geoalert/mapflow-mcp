@@ -154,7 +154,7 @@ export function createServer(
 	const empty = z.strictObject({});
 	register(
 		"list-models",
-		"List available models and their processing blocks.",
+		"List account and Lab models together, including their processing blocks and kind. Use the model name for calculate-cost and start-processing. Lab models are attached to the target project automatically when starting a processing.",
 		empty,
 		z.object({ models: z.array(mapflowModelSchema) }),
 		async (_, e) => ({ models: await client(e).getModels() }),
@@ -383,7 +383,7 @@ export function createServer(
 	);
 	register(
 		"start-processing",
-		"Start a paid processing for geometry or cached geometryId using the specified model and imagery. Charges account credits and creates a new processing on each call. calculate-cost estimates the price for the same parameters. Partial mosaic failures are returned as warnings. An expired geometryId requires a fresh geometry and estimate. A timeout leaves the outcome unknown; list-processings can locate the processing before any retry.",
+		"Start a paid processing for geometry or cached geometryId using the specified model and imagery. Charges account credits and creates a new processing on each call. A Lab model is first attached to the target project (the default project when projectId is omitted) and added to its model selection; account preferences are unchanged. calculate-cost estimates the price without attaching models. Partial mosaic failures are returned as warnings. An expired geometryId requires a fresh geometry and estimate. A timeout leaves the outcome unknown; list-processings can locate the processing before any retry.",
 		geometryTools.createProcessingToolSchema,
 		api.processingOutputSchema.extend({ warnings: z.array(z.string()) }),
 		(a, e) =>

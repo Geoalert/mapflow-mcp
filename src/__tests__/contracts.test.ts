@@ -132,12 +132,12 @@ test("account caches are isolated and balance is always fresh", async () => {
 	await b.getModels();
 	await a.getLimits();
 	await a.getLimits();
-	expect(calls.map((c) => c.auth)).toEqual([
-		"Basic a",
-		"Basic b",
-		"Basic a",
-		"Basic a",
-	]);
+	expect(
+		calls.filter((c) => c.path === "/rest/user/status").map((c) => c.auth),
+	).toEqual(["Basic a", "Basic b", "Basic a", "Basic a"]);
+	expect(
+		calls.filter((c) => c.path === "/rest/models/lab").map((c) => c.auth),
+	).toEqual(["Basic a", "Basic a", "Basic b"]);
 });
 test("unknown provider and model fail before posting", async () => {
 	const client = createMapflowClient("t");
@@ -150,7 +150,11 @@ test("unknown provider and model fail before posting", async () => {
 	await expect(
 		client.calculateCost({ wdName: "Unknown", areaSqKm: 1 }),
 	).rejects.toThrow("Model not found");
-	expect(calls.every((c) => c.path === "/rest/user/status")).toBe(true);
+	expect(
+		calls.every((c) =>
+			["/rest/user/status", "/rest/models/lab"].includes(c.path),
+		),
+	).toBe(true);
 });
 test("pagination beyond last project recovers true total; no user data leaks", async () => {
 	override = (u, b) =>

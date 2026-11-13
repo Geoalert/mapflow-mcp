@@ -14,6 +14,7 @@ export const mapflowModelSchema = z
 		id: z.uuid().optional(),
 		name: z.string().optional(),
 		description: z.string().nullable().optional(),
+		kind: z.enum(["default", "lab", "custom"]).optional(),
 		created: z.string().optional(),
 		updated: z.string().optional(),
 		pricePerSqKm: z.number().nullish(),

@@ -217,7 +217,9 @@ describe("createProcessing", () => {
 									],
 									dataProviders: [{ name: "Mapbox" }],
 								}
-							: mockProcessing,
+							: url.pathname === "/rest/models/lab"
+								? []
+								: mockProcessing,
 					),
 					{
 						status: 200,
@@ -248,8 +250,8 @@ describe("createProcessing", () => {
 			dataProvider: { name: "Mapbox", zoom: 18 },
 		});
 
-		expect(mockFetch).toHaveBeenCalledTimes(2);
-		const [url, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
+		expect(mockFetch).toHaveBeenCalledTimes(3);
+		const [url, init] = mockFetch.mock.calls[2] as [URL, RequestInit];
 		expect(url.toString()).toBe("https://api.mapflow.ai/rest/processings/v2");
 		expect(init.method).toBe("POST");
 	});
@@ -264,7 +266,7 @@ describe("createProcessing", () => {
 			inferenceParams: { threshold: "0.5" },
 		});
 
-		const [, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
+		const [, init] = mockFetch.mock.calls[2] as [URL, RequestInit];
 		const body = JSON.parse(init.body as string);
 
 		expect(body.params.sourceParams.dataProvider).toEqual({
@@ -285,7 +287,7 @@ describe("createProcessing", () => {
 			projectId,
 		});
 
-		const [, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
+		const [, init] = mockFetch.mock.calls[2] as [URL, RequestInit];
 		const body = JSON.parse(init.body as string);
 		expect(body.projectId).toBe(projectId);
 	});
@@ -374,6 +376,8 @@ describe("calculateCost", () => {
 	beforeEach(() => {
 		originalFetch = globalThis.fetch;
 		mockFetch = mock((url: URL) => {
+			if (url.pathname === "/rest/models/lab")
+				return Promise.resolve(Response.json([]));
 			const urlStr = url.toString();
 			if (urlStr.includes("/rest/user/status")) {
 				return Promise.resolve(
@@ -410,9 +414,9 @@ describe("calculateCost", () => {
 			geometry: mockGeometry,
 		});
 
-		// First call is getCachedUserStatus, second is the cost calculation
-		expect(mockFetch).toHaveBeenCalledTimes(2);
-		const [url, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
+		// Account status and Lab catalog are loaded before the cost calculation
+		expect(mockFetch).toHaveBeenCalledTimes(3);
+		const [url, init] = mockFetch.mock.calls[2] as [URL, RequestInit];
 		expect(url.toString()).toBe(
 			"https://api.mapflow.ai/rest/processing/cost/details/v2",
 		);
@@ -426,8 +430,8 @@ describe("calculateCost", () => {
 			areaSqKm: 10,
 		});
 
-		// Second call is the cost calculation (first is getCachedUserStatus)
-		const [, init] = mockFetch.mock.calls[1] as [URL, RequestInit];
+		// Third call is the cost calculation after both catalogs
+		const [, init] = mockFetch.mock.calls[2] as [URL, RequestInit];
 		const body = JSON.parse(init.body as string);
 
 		expect(body.areaSqKm).toBe(10);
