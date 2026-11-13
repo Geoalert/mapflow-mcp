@@ -102,7 +102,7 @@ The server exposes 19 tools. Parameters and REST mappings are documented in
 
 | Tool | Description |
 |------|-------------|
-| `list-models` | Available models and processing blocks |
+| `list-models` | Account and Lab models together, with processing blocks and kind |
 | `list-imagery-sources` | Available providers, zoom levels and prices |
 | `get-limits` | Fresh limits and remaining credits |
 | `list-projects` | Paginated project search |
@@ -220,7 +220,17 @@ Both cost and launch accept a `source`:
 { "type": "myImagery", "mosaicId": "550e8400-e29b-41d4-a716-446655440000" }
 ```
 
-Use the actual provider and model names returned for the account. The legacy
+`list-models` loads account status and `/rest/models/lab` concurrently and merges
+models by ID. The fresh Lab catalog takes precedence over cached account copies.
+Lab models can be estimated without activation. Immediately before a Lab processing
+starts, MCP ensures the model is visible in the chosen project, including its web
+model selection. If no project is specified, it resolves and uses the default
+project. Account-wide Lab preferences are unchanged. A preparation failure stops
+before the paid request; an attached model remains if the subsequent launch fails.
+The backend must support the Lab catalog API; a failed catalog request is reported
+instead of silently returning a partial model list.
+
+Use the actual provider and model names returned by the tools. The legacy
 `dataProvider: {name, zoom}` remains supported; combining it with `source` is an error.
 `meta` and `inferenceParams` accept string values, matching WM's API contract.
 

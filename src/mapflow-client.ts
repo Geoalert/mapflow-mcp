@@ -11,6 +11,7 @@ import {
 	createProcessingRequestSchema,
 	createProjectSchema,
 } from "./inputs.js";
+import { createModelCatalog } from "./model-catalog.js";
 import {
 	getProcessingResult,
 	type resultRequestSchema,
@@ -43,11 +44,18 @@ export function createMapflowClient(token: ApiCredentials) {
 		cache = { data, expiresAt: Date.now() + 300_000 };
 		return data;
 	};
+	const catalog = createModelCatalog(http, getCachedUserStatus);
 	async function validateConfiguration(req: CalculateCostRequest) {
-		const status = await getCachedUserStatus();
-		const model = status.models?.find((m) => m.name === req.wdName);
-		if (!model?.id)
+		const { status, models } = await catalog.getContext();
+		const matches = models.filter((m) => m.name === req.wdName);
+		const model = matches[0];
+		if (!model)
 			throw new ApiError(`Model not found: ${req.wdName}`, "INVALID_MODEL");
+		if (matches.length !== 1)
+			throw new ApiError(
+				`Multiple models have name: ${req.wdName}`,
+				"AMBIGUOUS_MODEL",
+			);
 		const source = resolveSource(req);
 		if (
 			source?.type === "provider" &&
@@ -75,7 +83,7 @@ export function createMapflowClient(token: ApiCredentials) {
 		fetchUserStatus,
 		getCachedUserStatus,
 		async getModels() {
-			return (await getCachedUserStatus()).models ?? [];
+			return (await catalog.getContext()).models;
 		},
 		async getImagerySources() {
 			return (await getCachedUserStatus()).dataProviders ?? [];
@@ -92,7 +100,7 @@ export function createMapflowClient(token: ApiCredentials) {
 		},
 		async createProcessing(args: CreateProcessingRequest) {
 			const req = createProcessingRequestSchema.parse(args);
-			const { source } = await validateConfiguration(req);
+			const { model, source } = await validateConfiguration(req);
 			let warnings: string[] = [];
 			if (source?.type === "myImagery") {
 				const status = await reads.getMosaicStatus(source.mosaicId);
@@ -103,11 +111,12 @@ export function createMapflowClient(token: ApiCredentials) {
 					);
 				warnings = status.warnings;
 			}
+			const projectId = await catalog.prepareProject(model, req.projectId);
 			const result = await http.post("/rest/processings/v2", processingSchema, {
 				name: req.name,
 				wdName: req.wdName,
 				geometry: req.geometry,
-				projectId: req.projectId,
+				projectId,
 				params: buildParams(source, req.inferenceParams),
 				blocks: req.blocks,
 				meta: req.meta,

@@ -174,6 +174,31 @@ test("tools/list exposes 19 tools, with creation and processing as non-idempoten
 		expect(t.annotations?.destructiveHint).toBe(t.name === "start-processing");
 	}
 });
+test("MCP exposes Lab models and estimates them without additional activation tools", async () => {
+	const model = {
+		id,
+		name: "Pools",
+		kind: "lab",
+		blocks: [{ name: "pools", price: 2.5 }],
+	};
+	responseOverride = (url) =>
+		url.pathname === "/rest/models/lab"
+			? Response.json([
+					{ workflowDef: model, activeOnAccount: false, activeProjectIds: [] },
+				])
+			: undefined;
+	const models = await client.callTool({ name: "list-models", arguments: {} });
+	expect(models.isError).not.toBe(true);
+	expect(models.structuredContent).toEqual({ models: [model] });
+	const cost = await client.callTool({
+		name: "calculate-cost",
+		arguments: { wdName: "Pools", areaSqKm: 1 },
+	});
+	expect(cost.isError).not.toBe(true);
+	expect(
+		requests.filter((r) => r.method !== "GET").map((r) => r.url.pathname),
+	).toEqual(["/rest/processing/cost/details/v2"]);
+});
 for (const [name, args] of calls)
 	test(`MCP call: ${name}`, async () => {
 		const result = await client.callTool({ name, arguments: args });

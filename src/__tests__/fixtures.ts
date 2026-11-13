@@ -94,6 +94,7 @@ export const statistics = {
 export function apiFixture(url: URL): unknown {
 	const path = url.pathname;
 	if (path === "/rest/user/status") return user;
+	if (path === "/rest/models/lab") return [];
 	if (path === "/rest/projects/page")
 		return { results: [project], total: 1, count: 1 };
 	if (path === "/rest/projects") return { ...project, isDefault: false };

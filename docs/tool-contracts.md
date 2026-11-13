@@ -223,6 +223,16 @@ Backend допускает также отдельное My Imagery image (`imag
 
 Существующий вход `dataProvider: {name, zoom}` сохранить временным alias для provider source. Одновременные `source` и `dataProvider` отклонять. `meta` и `inferenceParams` в текущем MCP допускают произвольные значения, но WM ожидает строки: целевая схема должна быть уже, без неявной сериализации объектов.
 
+### Lab-модели
+
+Контракт проверен по backend `origin/master` `95b08b09`, `docs/lab-configs.md`, `LabConfigResource`, `WorkflowDefService` и `WorkflowDefRepo`.
+
+- `list-models`, расчёт и запуск используют объединение `/rest/user/status.models` и `/rest/models/lab[].workflowDef`. Запросы выполняются параллельно; дедупликация по ID, свежий Lab-каталог имеет приоритет. Lab-записи из кэша аккаунта, отсутствующие в свежем каталоге, исключаются. Ошибка каталога не превращается в успешный неполный список; неоднозначное имя не выбирается произвольно.
+- Расчёт стоимости доступен без активации и остаётся read-only. Перед платным запуском, после проверки входных параметров и готовности мозаики, модель `kind=lab` автоматически добавляется в проект через существующий `POST /rest/projects/{projectId}/models/{id}`. Если она уже в `workflowDefs`, повторный POST не нужен. Отсутствующий `projectId` разрешается через `/rest/projects/default`, полученный UUID используется и для привязки, и для запуска.
+- При явном `displayProperties.models` ID добавляется в этот список, остальные свойства сохраняются. `null` и `"all"` не переписываются. Настройки аккаунта (`/models/lab/{id}/account`) не меняются; новых MCP tools нет.
+- Ошибка чтения/привязки/обновления фильтра останавливает выполнение до платного запроса. Привязка идемпотентна в БД (`ON CONFLICT DO NOTHING`). После сбоя запуска она сохраняется; платный POST автоматически не повторяется.
+- Подготовка одного проекта сериализована между клиентами внутри процесса MCP. API обновляет `displayProperties` целиком и не предоставляет conditional update: одновременное редактирование из веба или другого процесса может конкурировать с этим PUT. Для полной защиты нужен атомарный backend API изменения выбора моделей. Изменение backend в эту реализацию не входит.
+
 ### Фильтры каталога
 
 Дополнительно к `geometry`: `acquisitionDateFrom?`, `acquisitionDateTo?` (ISO instant или YYYY-MM-DD; дату разворачивать в UTC начало/конец суток), `maxCloudCover?` (0–100), `minResolution?`, `maxResolution?` (метры/пиксель > 0), `minOffNadirAngle?`, `maxOffNadirAngle?` (градусы, политика MCP 0–90), `minAoiIntersectionPercent?` (0–100), `dataProviders?: string[]`, `hideUnavailable?: boolean = true`, `limit?`, `offset?`, `sortBy?: ACQUISITION_DATE|CLOUD_COVER|OFF_NADIR_ANGLE|PIXEL_RESOLUTION|SAT_ID|ZOOM|PROVIDER_NAME = CLOUD_COVER`, `sortOrder?: ASC|DESC = ASC`.
