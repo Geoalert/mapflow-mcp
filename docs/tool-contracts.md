@@ -223,6 +223,16 @@ Backend допускает также отдельное My Imagery image (`imag
 
 Существующий вход `dataProvider: {name, zoom}` сохранить временным alias для provider source. Одновременные `source` и `dataProvider` отклонять. `meta` и `inferenceParams` в текущем MCP допускают произвольные значения, но WM ожидает строки: целевая схема должна быть уже, без неявной сериализации объектов.
 
+### Ссылки и управление проектами
+
+`MAPFLOW_WEB_URL` — обязательный HTTP(S) origin веб-клиента, без credentials, пути, query и fragment. Значение проверяется при запуске; домен не выводится из API URL. Проекты в `list-projects`, `get-project`, `create-project`, `update-project` содержат `url = {origin}/projects/{id}`. Обработки в `list-processings`, `get-processing`, `start-processing` содержат `url = {origin}/projects/{projectId}?processing={id}`. Без достоверного projectId возвращается `url: null`. Ссылки не предоставляют публичного доступа и не заменяют авторизацию.
+
+- `update-project`: `{projectId: UUID, name?: string (1–128 после trim), description?: string (0–1024)}`. Требуется хотя бы одно изменяемое поле; null и неизвестные поля отклоняются. `PUT /rest/projects/{id}` отправляет только переданные поля. Пустое описание очищает текст. Ответ проверяется на совпадение ID и изменённых значений.
+- `delete-project`: `{projectId: UUID}`. Сначала читается проект, проверяются ID и обязательный `isDefault`; default-проект отклоняется до DELETE. `DELETE /rest/projects/{id}` должен подтвердить успех JSON-строкой `"OK"`. Результат: `{projectId, name, archived: true}`. Backend проверяет права владельца, архивирует проект/обработки/шаблоны и отменяет running workflows.
+- Оба tools имеют `readOnlyHint=false`, `destructiveHint=true`, `idempotentHint=true` (повтор не создаёт сущности; повторное удаление может вернуть 404). Неизвестный результат PUT/DELETE при timeout, HTTP 5xx или неверном ответе не считается успехом и не повторяется автоматически. Проверки выполняются существующим транспортом; отдельной реализации авторизации нет.
+
+Контракты сверены с `ProjectResource`, `ProjectService`, `ProjectRepo`, `ProjectValidations`, `ProcessingService.archiveProcessingsUnsafe` и маршрутом `processing-card` веб-клиента.
+
 ### Lab-модели
 
 Контракт проверен по backend `origin/master` `95b08b09`, `docs/lab-configs.md`, `LabConfigResource`, `WorkflowDefService` и `WorkflowDefRepo`.

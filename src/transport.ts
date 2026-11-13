@@ -10,6 +10,12 @@ export class ApiError extends Error {
 }
 export type ApiTransport = ReturnType<typeof createTransport>;
 function unknownWriteOutcome(path: string, init?: RequestInit) {
+	if (/^\/rest\/projects\/[^/]+$/.test(path)) {
+		if (init?.method === "PUT")
+			return "Project update outcome is unknown. Check get-project before retrying.";
+		if (init?.method === "DELETE")
+			return "Project deletion outcome is unknown. Check get-project/list-projects before retrying; do not assume the project is still active.";
+	}
 	if (init?.method !== "POST") return undefined;
 	if (path === "/rest/processings/v2")
 		return "Processing request outcome is unknown. Check list-processings before retrying; do not automatically repeat the charge.";

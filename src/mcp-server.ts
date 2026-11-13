@@ -35,6 +35,7 @@ import {
 	mapflowUserLimitsSchema,
 } from "./schemas.js";
 import { ApiError } from "./transport.js";
+import { createWebLinks } from "./web-links.js";
 
 class LoggedMcpServer extends McpServer {
 	readonly toolNames = new Set<string>();
@@ -55,6 +56,24 @@ export function createServer(
 ) {
 	const server = new LoggedMcpServer({ name: "mapflow-mcp", version: "0.2.0" });
 	const clients = new Map<string, MapflowClient>();
+	const links = createWebLinks();
+	const projectOutput = api.projectSchema
+		.omit({ workflowDefs: true })
+		.extend({ url: z.url() });
+	const processingOutput = api.processingOutputSchema.extend({
+		url: z.url().nullable(),
+	});
+	const withProjectUrl = <T extends { id: string }>(value: T) => ({
+		...value,
+		url: links.project(value.id),
+	});
+	const withProcessingUrl = <T extends { id: string; projectId?: string }>(
+		value: T,
+		projectId?: string,
+	) => ({
+		...value,
+		url: links.processing(value.id, value.projectId ?? projectId),
+	});
 	const geometryCache = options.geometryCache ?? new GeometryCache();
 	const owner = (extra: Extra) => {
 		if (options.geometryOwner) return options.geometryOwner;
@@ -94,7 +113,7 @@ export function createServer(
 		schema: z.ZodObject<S>,
 		output: z.ZodObject,
 		handler: (args: z.output<z.ZodObject<S>>, extra: Extra) => unknown,
-		behavior: "read" | "create" | "charge" = "read",
+		behavior: "read" | "create" | "charge" | "update" | "delete" = "read",
 		attachment?: (value: unknown) => EmbeddedResource | TextContent,
 	) {
 		server.toolNames.add(name);
@@ -109,8 +128,8 @@ export function createServer(
 				outputSchema: output,
 				annotations: {
 					readOnlyHint: behavior === "read",
-					destructiveHint: behavior === "charge",
-					idempotentHint: behavior === "read",
+					destructiveHint: ["charge", "update", "delete"].includes(behavior),
+					idempotentHint: ["read", "update", "delete"].includes(behavior),
 					openWorldHint: name !== "buffer-aoi",
 				},
 			},
@@ -177,23 +196,46 @@ export function createServer(
 		"list-projects",
 		"Find accessible projects by name or member email, with pagination.",
 		input.listProjectsSchema,
-		api.pageOutputSchema(api.projectSchema.omit({ workflowDefs: true })),
-		(a, e) => client(e).listProjects(a),
+		api.pageOutputSchema(projectOutput),
+		async (a, e) => {
+			const page = await client(e).listProjects(a);
+			return { ...page, items: page.items.map(withProjectUrl) };
+		},
 	);
 	register(
 		"create-project",
 		"Create a project with a name and optional description. Returns its ID for start-processing.projectId. Creates a new project on every call; on an unknown outcome check list-projects before retrying.",
 		input.createProjectSchema,
-		api.projectSchema,
-		(a, e) => client(e).createProject(a),
+		api.projectSchema.extend({ url: z.url() }),
+		async (a, e) => withProjectUrl(await client(e).createProject(a)),
 		"create",
 	);
 	register(
 		"get-project",
 		"Get compact project metadata (ID, name, dates, area and processing counts) by UUID or projectId='default'. Model definitions and prices are available from list-models.",
 		input.getProjectSchema,
-		api.projectSchema.omit({ workflowDefs: true }),
-		(a, e) => client(e).getProject(a.projectId),
+		projectOutput,
+		async (a, e) => withProjectUrl(await client(e).getProject(a.projectId)),
+	);
+	register(
+		"update-project",
+		"Change a project's name and/or description. Omitted fields are preserved; an empty description clears it. Requires owner access. Returns the updated project and its Mapflow URL. On an unknown outcome check get-project before retrying.",
+		input.updateProjectSchema,
+		projectOutput,
+		async (a, e) => withProjectUrl(await client(e).updateProject(a)),
+		"update",
+	);
+	register(
+		"delete-project",
+		"Archive (soft-delete) a project, all its processings and processing templates, and cancel its running workflows. Requires owner access. The default project cannot be deleted. On an unknown outcome check get-project/list-projects before retrying.",
+		input.deleteProjectSchema,
+		z.object({
+			projectId: z.uuid(),
+			name: z.string(),
+			archived: z.literal(true),
+		}),
+		(a, e) => client(e).deleteProject(a),
+		"delete",
 	);
 	register(
 		"list-mosaics",
@@ -228,15 +270,24 @@ export function createServer(
 		"list-processings",
 		"Find processings within a project by description, status or date; newest first by default.",
 		input.listProcessingsSchema,
-		api.pageOutputSchema(api.processingSummarySchema),
-		(a, e) => client(e).listProcessings(a),
+		api.pageOutputSchema(
+			api.processingSummarySchema.extend({ url: z.url().nullable() }),
+		),
+		async (a, e) => {
+			const page = await client(e).listProcessings(a);
+			return {
+				...page,
+				items: page.items.map((item) => withProcessingUrl(item, a.projectId)),
+			};
+		},
 	);
 	register(
 		"get-processing",
 		"Get processing status and progress. Use get-processing-result for GeoJSON; internal map layers are not download links.",
 		input.processingIdSchema,
-		api.processingOutputSchema,
-		(a, e) => client(e).getProcessing(a.processingId),
+		processingOutput,
+		async (a, e) =>
+			withProcessingUrl(await client(e).getProcessing(a.processingId)),
 	);
 	register(
 		"get-processing-result",
@@ -385,10 +436,13 @@ export function createServer(
 		"start-processing",
 		"Start a paid processing for geometry or cached geometryId using the specified model and imagery. Charges account credits and creates a new processing on each call. A Lab model is first attached to the target project (the default project when projectId is omitted) and added to its model selection; account preferences are unchanged. calculate-cost estimates the price without attaching models. Partial mosaic failures are returned as warnings. An expired geometryId requires a fresh geometry and estimate. A timeout leaves the outcome unknown; list-processings can locate the processing before any retry.",
 		geometryTools.createProcessingToolSchema,
-		api.processingOutputSchema.extend({ warnings: z.array(z.string()) }),
-		(a, e) =>
-			client(e).createProcessing(
-				input.createProcessingRequestSchema.parse(resolve(a, e)),
+		processingOutput.extend({ warnings: z.array(z.string()) }),
+		async (a, e) =>
+			withProcessingUrl(
+				await client(e).createProcessing(
+					input.createProcessingRequestSchema.parse(resolve(a, e)),
+				),
+				a.projectId,
 			),
 		"charge",
 	);

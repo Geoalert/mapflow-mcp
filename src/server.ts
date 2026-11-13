@@ -1,8 +1,10 @@
 import { logEvent } from "./logging.js";
 import { createServer } from "./mcp-server.js";
+import { createWebLinks } from "./web-links.js";
 
 const transportMode = process.env.MAPFLOW_TRANSPORT ?? "stdio";
 try {
+	createWebLinks();
 	if (transportMode === "http") {
 		const { createHttpHandler } = await import("./http-server.js");
 		const { readOAuthConfig } = await import("./oauth.js");
