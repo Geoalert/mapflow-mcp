@@ -140,6 +140,23 @@ export const createProjectSchema = z.strictObject({
 	name: text.max(128),
 	description: z.string().max(1024).optional(),
 });
+export const updateProjectSchema = z
+	.strictObject({
+		projectId: z.uuid(),
+		name: text.max(128).optional(),
+		description: z
+			.string()
+			.max(1024)
+			.optional()
+			.describe(
+				"Omit to preserve the description; use an empty string to clear it.",
+			),
+	})
+	.refine(
+		(v) => v.name !== undefined || v.description !== undefined,
+		"Provide name or description",
+	);
+export const deleteProjectSchema = z.strictObject({ projectId: z.uuid() });
 export const listMosaicsSchema = z.strictObject({
 	...pagination,
 	nameContains: text.max(255).optional(),

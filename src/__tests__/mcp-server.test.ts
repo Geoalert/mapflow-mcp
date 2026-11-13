@@ -10,6 +10,7 @@ import {
 	id,
 	image,
 	processing,
+	project,
 	statistics,
 	user,
 } from "./fixtures.js";
@@ -160,19 +161,85 @@ test("discovery publishes numeric coordinate arrays while runtime rejects invali
 	}
 	expect(requests).toHaveLength(0);
 });
-test("tools/list exposes 19 tools, with creation and processing as non-idempotent writes", async () => {
+test("tools/list exposes 21 tools with accurate write annotations", async () => {
 	const { tools } = await client.listTools();
 	expect(tools.map((t) => t.name).sort()).toEqual(
-		calls.map((c) => c[0]).sort(),
+		[...calls.map((c) => c[0]), "update-project", "delete-project"].sort(),
 	);
 	for (const t of tools) {
 		expect(t.outputSchema?.type).toBe("object");
 		expect(t.title).toBeTruthy();
-		const write = ["start-processing", "create-project"].includes(t.name);
+		const write = [
+			"start-processing",
+			"create-project",
+			"update-project",
+			"delete-project",
+		].includes(t.name);
 		expect(t.annotations?.readOnlyHint).toBe(!write);
-		expect(t.annotations?.idempotentHint).toBe(!write);
-		expect(t.annotations?.destructiveHint).toBe(t.name === "start-processing");
+		expect(t.annotations?.idempotentHint).toBe(
+			!["start-processing", "create-project"].includes(t.name),
+		);
+		expect(t.annotations?.destructiveHint).toBe(
+			["start-processing", "update-project", "delete-project"].includes(t.name),
+		);
 	}
+});
+test("project and processing responses include configured web links", async () => {
+	for (const [name, args] of calls.filter(([name]) =>
+		[
+			"create-project",
+			"get-project",
+			"list-projects",
+			"start-processing",
+			"get-processing",
+			"list-processings",
+		].includes(name),
+	)) {
+		const result = await client.callTool({ name, arguments: args });
+		expect(result.isError).not.toBe(true);
+		const data = result.structuredContent as {
+			url?: string;
+			items?: { url: string }[];
+		};
+		const url = name.startsWith("list-") ? data.items?.[0]?.url : data.url;
+		const expected = new URL(`/projects/${id}`, process.env.MAPFLOW_WEB_URL);
+		if (name.includes("processing"))
+			expected.searchParams.set("processing", id);
+		expect(url).toBe(expected.href);
+	}
+});
+test("MCP update-project returns updated metadata and url", async () => {
+	responseOverride = () => Response.json({ ...project, name: "Renamed" });
+	const result = await client.callTool({
+		name: "update-project",
+		arguments: { projectId: id, name: "Renamed" },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(result.structuredContent).toMatchObject({
+		id,
+		name: "Renamed",
+		url: new URL(`/projects/${id}`, process.env.MAPFLOW_WEB_URL).href,
+	});
+	expect(requests[0]).toMatchObject({
+		method: "PUT",
+		body: { name: "Renamed" },
+	});
+});
+test("MCP delete-project returns archival acknowledgement", async () => {
+	responseOverride = () =>
+		requests.at(-1)?.method === "DELETE"
+			? Response.json("OK")
+			: Response.json({ ...project, isDefault: false });
+	const result = await client.callTool({
+		name: "delete-project",
+		arguments: { projectId: id },
+	});
+	expect(result.isError).not.toBe(true);
+	expect(result.structuredContent).toEqual({
+		projectId: id,
+		name: project.name,
+		archived: true,
+	});
 });
 test("MCP exposes Lab models and estimates them without additional activation tools", async () => {
 	const model = {

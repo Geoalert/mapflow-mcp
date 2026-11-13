@@ -5,6 +5,7 @@ mapflowMcp:
   extraEnv:
     MAPFLOW_TRANSPORT: "http"
     MAPFLOW_BASE_URL: "https://duty.mapflow.ai"
+    MAPFLOW_WEB_URL: "https://duty.mapflow.ai"
     MCP_OAUTH_ISSUER: "https://auth-duty.mapflow.ai/auth/realms/mapflow-duty"
     MCP_OAUTH_RESOURCE: "https://mapflow-mcp-duty.mapflow.ai/mcp/oauth"
     MCP_OAUTH_CLIENT_ID: "mapflow-mcp-test"

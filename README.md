@@ -5,15 +5,20 @@ MCP server for the [Mapflow](https://mapflow.ai) geospatial AI platform. Enables
 ## Quick Start with Docker
 
 ```bash
-docker run -i --rm -e MAPFLOW_TOKEN=your_token ghcr.io/geoalert/mapflow-mcp:latest
+docker run -i --rm -e MAPFLOW_TOKEN=your_token -e MAPFLOW_WEB_URL=https://duty.mapflow.ai -e MAPFLOW_BASE_URL=https://duty.mapflow.ai ghcr.io/geoalert/mapflow-mcp:latest
 ```
 
 ## Configuration
 
+`MAPFLOW_WEB_URL` is required: set it to the Mapflow web origin for your
+environment (the examples below use duty). It must be an HTTP(S) origin without
+credentials, a path, query or fragment. `MAPFLOW_BASE_URL` independently controls
+the backend API. There is no inferred production URL or API-to-web hostname mapping.
+
 ### Claude Code
 
 ```bash
-claude mcp add mapflow -e MAPFLOW_TOKEN=your_token -- docker run -i --rm -e MAPFLOW_TOKEN ghcr.io/geoalert/mapflow-mcp:latest
+claude mcp add mapflow -e MAPFLOW_TOKEN=your_token -e MAPFLOW_WEB_URL=https://duty.mapflow.ai -e MAPFLOW_BASE_URL=https://duty.mapflow.ai -- docker run -i --rm -e MAPFLOW_TOKEN -e MAPFLOW_WEB_URL -e MAPFLOW_BASE_URL ghcr.io/geoalert/mapflow-mcp:latest
 ```
 
 ### Claude Desktop
@@ -25,9 +30,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
   "mcpServers": {
     "mapflow": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "ghcr.io/geoalert/mapflow-mcp:latest"],
+      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "-e", "MAPFLOW_WEB_URL", "-e", "MAPFLOW_BASE_URL", "ghcr.io/geoalert/mapflow-mcp:latest"],
       "env": {
-        "MAPFLOW_TOKEN": "your_token"
+        "MAPFLOW_TOKEN": "your_token",
+        "MAPFLOW_WEB_URL": "https://duty.mapflow.ai",
+        "MAPFLOW_BASE_URL": "https://duty.mapflow.ai"
       }
     }
   }
@@ -43,9 +50,11 @@ Edit `~/.cursor/mcp.json`:
   "mcpServers": {
     "mapflow": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "ghcr.io/geoalert/mapflow-mcp:latest"],
+      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "-e", "MAPFLOW_WEB_URL", "-e", "MAPFLOW_BASE_URL", "ghcr.io/geoalert/mapflow-mcp:latest"],
       "env": {
-        "MAPFLOW_TOKEN": "your_token"
+        "MAPFLOW_TOKEN": "your_token",
+        "MAPFLOW_WEB_URL": "https://duty.mapflow.ai",
+        "MAPFLOW_BASE_URL": "https://duty.mapflow.ai"
       }
     }
   }
@@ -61,9 +70,11 @@ Edit `~/.codeium/windsurf/mcp_config.json`:
   "mcpServers": {
     "mapflow": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "ghcr.io/geoalert/mapflow-mcp:latest"],
+      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "-e", "MAPFLOW_WEB_URL", "-e", "MAPFLOW_BASE_URL", "ghcr.io/geoalert/mapflow-mcp:latest"],
       "env": {
-        "MAPFLOW_TOKEN": "your_token"
+        "MAPFLOW_TOKEN": "your_token",
+        "MAPFLOW_WEB_URL": "https://duty.mapflow.ai",
+        "MAPFLOW_BASE_URL": "https://duty.mapflow.ai"
       }
     }
   }
@@ -79,9 +90,11 @@ Edit `.vscode/mcp.json` in your workspace or `~/.vscode/mcp.json` globally:
   "servers": {
     "mapflow": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "ghcr.io/geoalert/mapflow-mcp:latest"],
+      "args": ["run", "-i", "--rm", "-e", "MAPFLOW_TOKEN", "-e", "MAPFLOW_WEB_URL", "-e", "MAPFLOW_BASE_URL", "ghcr.io/geoalert/mapflow-mcp:latest"],
       "env": {
-        "MAPFLOW_TOKEN": "your_token"
+        "MAPFLOW_TOKEN": "your_token",
+        "MAPFLOW_WEB_URL": "https://duty.mapflow.ai",
+        "MAPFLOW_BASE_URL": "https://duty.mapflow.ai"
       }
     }
   }
@@ -97,7 +110,7 @@ MAPFLOW_TOKEN=your_token bun run src/server.ts
 
 ## Tools
 
-The server exposes 19 tools. Parameters and REST mappings are documented in
+The server exposes 21 tools. Parameters and REST mappings are documented in
 [the tool contract specification](docs/tool-contracts.md).
 
 | Tool | Description |
@@ -107,7 +120,9 @@ The server exposes 19 tools. Parameters and REST mappings are documented in
 | `get-limits` | Fresh limits and remaining credits |
 | `list-projects` | Paginated project search |
 | `create-project` | Create a project with a name and optional description |
-| `get-project` | Project by UUID or `default` |
+| `get-project` | Project by UUID or `default`, with web URL |
+| `update-project` | Change only the supplied project name/description |
+| `delete-project` | Archive a non-default project and its contents; cancel running workflows |
 | `list-mosaics` | Paginated My Imagery search |
 | `get-mosaic` | Metadata and footprint converted to GeoJSON |
 | `get-mosaic-status` | Data readiness, loading and per-image failures |
@@ -250,14 +265,28 @@ unrecognized creation response, check `list-projects` for the requested name
 before considering another create call.
 
 Results are returned as validated structured content and JSON text. Tool errors
-use `isError`. Result file downloading, uploads, project updates/deletion/sharing and agent
-session/memory tools are not exposed. Legacy MCP resources are not registered;
+use `isError`. Uploads, project sharing and agent session/memory tools are not exposed. Legacy MCP resources are not registered;
 use `list-models`, `list-imagery-sources` and `get-limits` instead.
+
+`url` is included in project read/create/update/list responses and processing
+read/start/list responses. It points to `/projects/{projectId}` or
+`/projects/{projectId}?processing={processingId}` on `MAPFLOW_WEB_URL` and requires
+the user to have access in Mapflow. If a processing response lacks a project ID
+and none is available from the request, its `url` is `null`.
+
+`update-project` requires a UUID and at least one of `name` or `description`.
+Omitted fields stay unchanged; `description: ""` clears the description.
+`delete-project` requires a UUID and archives the project, its processings and
+templates, cancelling running workflows. The default project is protected.
+Both operations require owner access as checked by the backend. Network errors
+or malformed write acknowledgements leave the outcome unknown; inspect the
+project before retrying. Neither operation automatically retries.
 
 ## HTTP transport
 
 ```bash
-MAPFLOW_TRANSPORT=http PORT=3000 bun run src/server.ts
+MAPFLOW_WEB_URL=https://duty.mapflow.ai MAPFLOW_BASE_URL=https://duty.mapflow.ai \
+  MAPFLOW_TRANSPORT=http PORT=3000 bun run src/server.ts
 ```
 
 Connect to `/mcp` with `Authorization: Bearer <Mapflow token>`. The server forwards

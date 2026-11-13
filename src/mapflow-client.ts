@@ -17,6 +17,7 @@ import {
 	type resultRequestSchema,
 } from "./processing-result.js";
 import { buildParams, resolveSource } from "./processing-source.js";
+import { createProjectClient } from "./project-client.js";
 import { createReadClient } from "./read-client.js";
 import {
 	type mapflowDataProviderSchema,
@@ -70,6 +71,7 @@ export function createMapflowClient(token: ApiCredentials) {
 	return {
 		...http,
 		...reads,
+		...createProjectClient(http),
 		getProcessingResult(args: z.input<typeof resultRequestSchema>) {
 			return getProcessingResult(http, args);
 		},
