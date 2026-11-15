@@ -295,6 +295,31 @@ fallback for configured single-user deployments and stdio. Account caches are
 isolated by token. `MAPFLOW_BASE_URL` defaults to `https://whitemaps-staging.mapflow.ai`;
 set it explicitly for another environment.
 
+## Mapflow Interactive's tools (optional)
+
+With `MAPFLOW_INTERACTIVE_URL` set to Mapflow Interactive's address (HTTPS), this
+server also lists the tools, prompts and card page that the app publishes in its
+manifest (`GET /api/agent/v1/manifest`), and forwards each call to the app's
+`POST /api/agent/v1/tools/{tool}` as the same user: the Mapflow token as Basic on
+`/mcp`, the exchanged token as Bearer on `/mcp/oauth`. Without it the server is
+unchanged. No tool of the app's is written here: `src/interactive.ts` holds the
+whole module.
+
+- The manifest is read at start and again every `MAPFLOW_INTERACTIVE_REFRESH_SECONDS`
+  (300) with `If-None-Match`, in the background: this server's own tools never wait
+  for it, and while the app is down the last good manifest stays listed.
+- A manifest is checked before it is listed: each tool's name (kebab-case, at most
+  64 characters, none of this server's), its title and its three hints as explicit
+  booleans, no output schema, sizes, and no tool dropped unless the manifest before
+  it marked the tool as deprecated.
+- The app's tools keep their own JSON Schemas in `tools/list`. They are registered
+  with a schema that lets every argument through; the app checks the arguments.
+- A call may take `MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS` (60). The app's refusals,
+  a 401, a 404, being busy and a timeout come back as tool errors.
+- The manifest's `attach` puts the app's card on one of this server's tools
+  (`list-mosaics`): its page in the tool's `_meta`, and what to show in each of its
+  results' `_meta`.
+
 ## Logging
 
 The server writes newline-delimited JSON to **stderr** using Pino. stdout is

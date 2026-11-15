@@ -18,6 +18,12 @@ import {
 import * as presentation from "./geometry-presentation.js";
 import * as geometryTools from "./geometry-tools.js";
 import * as input from "./inputs.js";
+import {
+	addInteractive,
+	type InteractiveCatalog,
+	interactiveTransport,
+	type Manifest,
+} from "./interactive.js";
 import { recordToolError } from "./logging.js";
 import { loggingTransport } from "./logging-transport.js";
 import { createMapflowClient, type MapflowClient } from "./mapflow-client.js";
@@ -34,13 +40,18 @@ import {
 	mapflowModelSchema,
 	mapflowUserLimitsSchema,
 } from "./schemas.js";
-import { ApiError } from "./transport.js";
+import { type ApiCredentials, ApiError } from "./transport.js";
 import { createWebLinks } from "./web-links.js";
 
 class LoggedMcpServer extends McpServer {
 	readonly toolNames = new Set<string>();
+	// The Mapflow Interactive manifest whose tools this server lists (src/interactive.ts).
+	interactive?: Manifest;
 	override connect(transport: Transport) {
-		return super.connect(loggingTransport(transport, this.toolNames));
+		const inner = this.interactive
+			? interactiveTransport(transport, this.interactive)
+			: transport;
+		return super.connect(loggingTransport(inner, this.toolNames));
 	}
 }
 
@@ -52,9 +63,17 @@ export function createServer(
 		allowEnvToken?: boolean;
 		geometryCache?: GeometryCache;
 		geometryOwner?: string;
+		interactive?: InteractiveCatalog;
+		credentials?: ApiCredentials;
 	} = {},
 ) {
-	const server = new LoggedMcpServer({ name: "mapflow-mcp", version: "0.2.0" });
+	const manifest = options.interactive?.manifest;
+	const server = new LoggedMcpServer(
+		{ name: "mapflow-mcp", version: "0.2.0" },
+		manifest?.instructions
+			? { instructions: manifest.instructions }
+			: undefined,
+	);
 	const clients = new Map<string, MapflowClient>();
 	const links = createWebLinks();
 	const projectOutput = api.projectSchema
@@ -446,5 +465,17 @@ export function createServer(
 			),
 		"charge",
 	);
+	if (options.interactive && manifest) {
+		// Mapflow Interactive's tools call its app as the same user, with what this server calls Mapflow with.
+		const credentials = (extra: Extra): ApiCredentials | undefined =>
+			options.credentials ??
+			extra.authInfo?.token ??
+			(options.allowEnvToken === false ? undefined : Bun.env.MAPFLOW_TOKEN);
+		addInteractive(server, manifest, {
+			catalog: options.interactive,
+			credentials,
+		});
+		server.interactive = manifest;
+	}
 	return server;
 }
