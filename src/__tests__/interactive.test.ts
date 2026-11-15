@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import {
 	checkManifest,
 	InteractiveCatalog,
+	interactiveTransport,
 	type Manifest,
 	ManifestError,
 	readInteractiveConfig,
@@ -53,10 +56,11 @@ const fixture = () =>
 				name: "view",
 				title: "Interactive: View the image",
 				description: "A picture of the image or a region.",
+				// Not in the parse's order of keys: it goes out as written.
 				inputSchema: {
-					type: "object",
-					properties: { sid: { type: "string", maxLength: 40 } },
+					properties: { sid: { maxLength: 40, type: "string" } },
 					required: ["sid"],
+					type: "object",
 				},
 				annotations: { ...hints, readOnlyHint: true },
 			},
@@ -438,4 +442,31 @@ test("a new manifest is listed by the next request, with no restart", async () =
 	await catalog.refresh();
 	const c = await connect(catalog);
 	expect((await c.listTools()).tools.map((t) => t.name)).toContain("stats");
+});
+
+test("the schemas go out on the wire as the app wrote them, to the byte", async () => {
+	// A client's SDK parses tools/list with its own schema and may order the keys again; what is sent is the app's.
+	const manifest = checkManifest(fixture(), reserved);
+	const sent: JSONRPCMessage[] = [];
+	const inner: Transport = {
+		start: async () => {},
+		send: async (message) => {
+			sent.push(message);
+		},
+		close: async () => {},
+	};
+	const transport = interactiveTransport(inner, manifest);
+	await transport.start();
+	inner.onmessage?.({ jsonrpc: "2.0", id: 7, method: "tools/list" });
+	await transport.send({
+		jsonrpc: "2.0",
+		id: 7,
+		result: { tools: [{ name: "view", inputSchema: { type: "object" } }] },
+	});
+	const listed = (
+		nth(sent, 0) as unknown as { result: { tools: { inputSchema: unknown }[] } }
+	).result.tools;
+	expect(JSON.stringify(nth(listed, 0).inputSchema)).toBe(
+		JSON.stringify(nth(fixture().tools, 1).inputSchema),
+	);
 });

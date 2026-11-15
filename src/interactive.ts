@@ -132,6 +132,16 @@ export function checkManifest(
 				.join("; "),
 		);
 	const manifest = parsed.data;
+	// The schemas go out as the app wrote them, to the byte: the parse puts keys in its own order.
+	const written = (
+		raw as {
+			tools: { inputSchema: Manifest["tools"][number]["inputSchema"] }[];
+		}
+	).tools;
+	manifest.tools.forEach((tool, i) => {
+		const schema = written[i]?.inputSchema;
+		if (schema) tool.inputSchema = schema;
+	});
 	const theirs = new Set([...reserved].map(canonical));
 	const names = new Set<string>();
 	for (const tool of manifest.tools) {
