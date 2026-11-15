@@ -85,7 +85,7 @@ const fixture = () =>
 			{
 				tool: "list-mosaics",
 				_meta: { ui: { resourceUri: PAGE } },
-				resultMeta: { "rsdemo/widget": { tool: "list-mosaics" } },
+				resultMeta: { "mapflow-interactive/widget": { tool: "list-mosaics" } },
 			},
 		],
 		deprecated: [],
@@ -276,7 +276,13 @@ test("a call goes to the app as the user, and its answer comes back as it came",
 			{ type: "text", text: '{"sid":"s4"}' },
 			{ type: "image", data: "iVBORw0KGgo=", mimeType: "image/png" },
 		],
-		_meta: { "rsdemo/widget": { tool: "start-session", sid: "abc", card: 1 } },
+		_meta: {
+			"mapflow-interactive/widget": {
+				tool: "start-session",
+				sid: "abc",
+				card: 1,
+			},
+		},
 		isError: false,
 	};
 	answer = (u) =>
@@ -421,7 +427,9 @@ test("the prompt and the card's page come from the app", async () => {
 test("the card attached to list-mosaics is in each of its results", async () => {
 	const c = await connect(await loaded());
 	const out = await c.callTool({ name: "list-mosaics", arguments: {} });
-	expect(out._meta).toEqual({ "rsdemo/widget": { tool: "list-mosaics" } });
+	expect(out._meta).toEqual({
+		"mapflow-interactive/widget": { tool: "list-mosaics" },
+	});
 	expect(out.structuredContent).toBeDefined();
 });
 
