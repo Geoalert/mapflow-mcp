@@ -177,6 +177,8 @@ export function checkManifest(
 
 export type InteractiveConfig = {
 	baseUrl: string;
+	/** MAPFLOW_INTERACTIVE_KEY: the key the app's manifest and cards' page answer, sent as X-Interactive-Key. */
+	key: string;
 	refreshMs: number;
 	timeoutMs: number;
 };
@@ -186,7 +188,8 @@ const seconds = (value: string | undefined, fallback: number, max: number) => {
 	return Number.isFinite(n) && n > 0 ? Math.min(n, max) : fallback;
 };
 
-/** MAPFLOW_INTERACTIVE_URL (the app's address, HTTPS), and how often the manifest is read again and how long a call may take. */
+/** MAPFLOW_INTERACTIVE_URL (the app's address, HTTPS) with MAPFLOW_INTERACTIVE_KEY (the key its manifest answers),
+ * and how often the manifest is read again and how long a call may take. */
 export function readInteractiveConfig(
 	env: Record<string, string | undefined>,
 ): InteractiveConfig | undefined {
@@ -198,8 +201,14 @@ export function readInteractiveConfig(
 		throw new Error("MAPFLOW_INTERACTIVE_URL must be an https URL");
 	if (url.search || url.hash || url.username || url.password)
 		throw new Error("MAPFLOW_INTERACTIVE_URL is an address only");
+	const key = env.MAPFLOW_INTERACTIVE_KEY?.trim();
+	if (!key)
+		throw new Error(
+			"MAPFLOW_INTERACTIVE_KEY must be set with MAPFLOW_INTERACTIVE_URL",
+		);
 	return {
 		baseUrl: url.href.replace(/\/+$/, ""),
+		key,
 		refreshMs:
 			seconds(env.MAPFLOW_INTERACTIVE_REFRESH_SECONDS, 300, 3600) * 1000,
 		timeoutMs: seconds(env.MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS, 60, 600) * 1000,
@@ -238,6 +247,7 @@ export class InteractiveCatalog {
 			const response = await fetch(this.url(`${PREFIX}/manifest`), {
 				headers: {
 					Accept: "application/json",
+					"X-Interactive-Key": this.config.key,
 					...(this.#etag ? { "If-None-Match": this.#etag } : {}),
 				},
 				redirect: "error",
@@ -298,6 +308,7 @@ export class InteractiveCatalog {
 			{
 				headers: {
 					Accept: "application/json",
+					"X-Interactive-Key": this.config.key,
 					...(kept?.etag ? { "If-None-Match": kept.etag } : {}),
 				},
 				redirect: "error",

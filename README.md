@@ -305,6 +305,10 @@ manifest (`GET /api/agent/v1/manifest`), and forwards each call to the app's
 unchanged. No tool of the app's is written here: `src/interactive.ts` holds the
 whole module.
 
+The manifest and the card's page are read with no user, so the app answers them
+only with `X-Interactive-Key`: set `MAPFLOW_INTERACTIVE_KEY` to the key the app's
+deployment shares (a secret). With the URL set and no key, the server doesn't start.
+
 - The manifest is read at start and again every `MAPFLOW_INTERACTIVE_REFRESH_SECONDS`
   (300) with `If-None-Match`, in the background: this server's own tools never wait
   for it, and while the app is down the last good manifest stays listed.

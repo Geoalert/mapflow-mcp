@@ -100,7 +100,8 @@ let answer: (
 ) => Response | Promise<Response> | undefined;
 let manifestBody: unknown;
 let client: Client;
-const config = { baseUrl: APP, refreshMs: 60_000, timeoutMs: 2_000 };
+const KEY = "a-shared-key-for-the-tests";
+const config = { baseUrl: APP, key: KEY, refreshMs: 60_000, timeoutMs: 2_000 };
 let reserved: Set<string>;
 
 beforeEach(() => {
@@ -116,6 +117,13 @@ beforeEach(() => {
 				headers: new Headers(init?.headers),
 				body: init?.body ? JSON.parse(String(init.body)) : undefined,
 			});
+			const keyed = ["/api/agent/v1/manifest", "/api/agent/v1/resources"];
+			if (
+				u.origin === APP &&
+				keyed.includes(u.pathname) &&
+				new Headers(init?.headers).get("x-interactive-key") !== KEY
+			)
+				return new Response("key", { status: 401 });
 			const given = await answer(u, init);
 			if (given) return given;
 			if (u.origin === APP && u.pathname === "/api/agent/v1/manifest")
@@ -152,24 +160,47 @@ async function loaded() {
 	return catalog;
 }
 
-test("off without MAPFLOW_INTERACTIVE_URL; an https address otherwise", () => {
+test("off without MAPFLOW_INTERACTIVE_URL; an https address and its key otherwise", () => {
 	expect(readInteractiveConfig({})).toBeUndefined();
-	expect(readInteractiveConfig({ MAPFLOW_INTERACTIVE_URL: `${APP}/` })).toEqual(
-		{
-			baseUrl: APP,
-			refreshMs: 300_000,
-			timeoutMs: 60_000,
-		},
-	);
 	expect(
-		readInteractiveConfig({ MAPFLOW_INTERACTIVE_URL: "http://localhost:8000" })
-			?.baseUrl,
+		readInteractiveConfig({
+			MAPFLOW_INTERACTIVE_URL: `${APP}/`,
+			MAPFLOW_INTERACTIVE_KEY: ` ${KEY} `,
+		}),
+	).toEqual({
+		baseUrl: APP,
+		key: KEY,
+		refreshMs: 300_000,
+		timeoutMs: 60_000,
+	});
+	expect(
+		readInteractiveConfig({
+			MAPFLOW_INTERACTIVE_URL: "http://localhost:8000",
+			MAPFLOW_INTERACTIVE_KEY: KEY,
+		})?.baseUrl,
 	).toBe("http://localhost:8000");
 	expect(() =>
 		readInteractiveConfig({
 			MAPFLOW_INTERACTIVE_URL: "http://interactive.example.test",
+			MAPFLOW_INTERACTIVE_KEY: KEY,
 		}),
 	).toThrow("https");
+	expect(() =>
+		readInteractiveConfig({ MAPFLOW_INTERACTIVE_URL: `${APP}/` }),
+	).toThrow("MAPFLOW_INTERACTIVE_KEY");
+});
+
+test("the manifest and the card's page are read with the key; a wrong key lists nothing", async () => {
+	const catalog = await loaded();
+	const reads = seen.filter((s) => s.url.pathname === "/api/agent/v1/manifest");
+	expect(reads.map((s) => s.headers.get("x-interactive-key"))).toEqual([KEY]);
+	const wrong = new InteractiveCatalog(
+		{ ...config, key: "not-the-key" },
+		reserved,
+	);
+	await wrong.refresh();
+	expect(wrong.manifest).toBeUndefined();
+	expect(catalog.manifest).toBeDefined();
 });
 
 test("a manifest is refused unless every tool is complete and none is the server's own", () => {
