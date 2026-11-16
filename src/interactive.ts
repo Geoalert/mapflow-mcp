@@ -25,6 +25,26 @@ import { type ApiCredentials, ApiError } from "./transport.js";
 
 type Extra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 
+/** The joint server's own instructions, before Mapflow Interactive's (its manifest's): which of the two ways to take
+ * for a request to find objects, and what follows either. Only with Mapflow Interactive's tools loaded: the
+ * platform's tools alone have no instructions. */
+export const JOINT_INSTRUCTIONS = [
+	"This server has Mapflow's tools and Mapflow Interactive's in one. Two ways to find objects on the user's imagery:",
+	"- Mapflow's models: list-models lists those the user can run (Mapflow's trained models, such as buildings, roads, forest and tree crowns, and models of their own). When one of them is made for the objects the user asks for, run it as a processing over the area: calculate-cost first, tell the user the cost and wait for their yes, then start-processing; get-processing follows it.",
+	"- Mapflow Interactive (SAM3 and Fewshots in a session on a MyImagery mosaic; the prompt find-objects): for kinds of objects no model of theirs covers, or their own definition of one. Its instructions follow.",
+	"After either, offer to polish the result (the prompt polish-results): it fixes a processing's result on the user's MyImagery, or a session's round. A config tuned in a session can be published to run as one of the user's models.",
+].join("\n");
+
+/** The server's instructions: the joint block, then the manifest's, with Mapflow Interactive's tools; none without. */
+export function serverInstructions(manifest?: {
+	instructions?: string | null;
+}): string | undefined {
+	if (!manifest) return undefined;
+	return manifest.instructions
+		? `${JOINT_INSTRUCTIONS}\n\n${manifest.instructions}`
+		: JOINT_INSTRUCTIONS;
+}
+
 const PREFIX = "/api/agent/v1";
 const NAME = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const ARGUMENT = /^[a-z][a-zA-Z0-9]*$/;

@@ -7,6 +7,7 @@ import {
 	checkManifest,
 	InteractiveCatalog,
 	interactiveTransport,
+	JOINT_INSTRUCTIONS,
 	type Manifest,
 	ManifestError,
 	readInteractiveConfig,
@@ -297,8 +298,14 @@ test("the list is the server's own tools as they were, then ours with our schema
 	} as unknown as (typeof listed)[0]);
 	const mosaics = listed.find((t) => t.name === "list-mosaics");
 	expect(mosaics?._meta).toEqual({ ui: { resourceUri: PAGE } });
+	// the platform's tools alone have no instructions; with Mapflow Interactive's, the joint block comes first
 	expect(ownInstructions).toBeUndefined();
-	expect(c.getInstructions()).toBe("Mapflow Interactive's workflow.");
+	expect(c.getInstructions()).toBe(
+		`${JOINT_INSTRUCTIONS}\n\nMapflow Interactive's workflow.`,
+	);
+	for (const tool of ["list-models", "calculate-cost", "start-processing"])
+		expect(JOINT_INSTRUCTIONS).toContain(tool);
+	expect(JOINT_INSTRUCTIONS).not.toMatch(/duty|https?:/);
 });
 
 test("a call goes to the app as the user, and its answer comes back as it came", async () => {

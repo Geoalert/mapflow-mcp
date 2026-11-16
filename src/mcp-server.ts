@@ -23,6 +23,7 @@ import {
 	type InteractiveCatalog,
 	interactiveTransport,
 	type Manifest,
+	serverInstructions,
 } from "./interactive.js";
 import { recordToolError } from "./logging.js";
 import { loggingTransport } from "./logging-transport.js";
@@ -68,11 +69,10 @@ export function createServer(
 	} = {},
 ) {
 	const manifest = options.interactive?.manifest;
+	const instructions = serverInstructions(manifest);
 	const server = new LoggedMcpServer(
 		{ name: "mapflow-mcp", version: "0.2.0" },
-		manifest?.instructions
-			? { instructions: manifest.instructions }
-			: undefined,
+		instructions ? { instructions } : undefined,
 	);
 	const clients = new Map<string, MapflowClient>();
 	const links = createWebLinks();
