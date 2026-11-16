@@ -25,5 +25,7 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"noPropertyAccessFromIndexSignature": false
-	}
+	},
+	// Mapflow Interactive's card is plain browser code, inlined into its page as it is.
+	"exclude": ["node_modules", "src/interactive/card"]
 }

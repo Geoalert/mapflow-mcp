@@ -30,6 +30,7 @@ This project is mcp server for mapflow.ai api
 
 - Use type-only imports (e.g., `import type { Foo }`) when `verbatimModuleSyntax` is enabled to satisfy TypeScript’s module rules.
 - Prefer `McpServer` from `@modelcontextprotocol/sdk/server/mcp.js` instead of the deprecated `Server` import.
+- Write a callback that assigns with a block body (`(m) => { m.x = 1; }`), not as an expression (`(m) => (m.x = 1)`), to satisfy `noAssignInExpressions`.
 
 ## Logging
 

@@ -1,0 +1,7669 @@
+{
+ "openapi": "3.1.0",
+ "components": {
+  "schemas": {
+   "AddImageIn": {
+    "properties": {
+     "mosaic": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 64
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mosaic"
+     },
+     "aoi": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aoi"
+     },
+     "region": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array",
+        "maxItems": 4,
+        "minItems": 4
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Region"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "processing": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 64
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Processing"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "AddImageIn"
+   },
+   "AuditIn": {
+    "properties": {
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "cells": {
+      "type": "integer",
+      "maximum": 9.0,
+      "minimum": 1.0,
+      "title": "Cells",
+      "default": 6
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "AuditIn"
+   },
+   "AuditPointsIn": {
+    "properties": {
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "n": {
+      "type": "integer",
+      "maximum": 64.0,
+      "minimum": 2.0,
+      "title": "N",
+      "default": 40
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "labels": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "string",
+         "enum": [
+          "in",
+          "out",
+          "unsure"
+         ]
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Labels"
+     },
+     "audit": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Audit"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "AuditPointsIn"
+   },
+   "BoxExampleIn": {
+    "properties": {
+     "box_px": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Box Px"
+     },
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign",
+      "default": 1
+     }
+    },
+    "type": "object",
+    "required": [
+     "box_px"
+    ],
+    "title": "BoxExampleIn"
+   },
+   "ChangesIn": {
+    "properties": {
+     "action": {
+      "type": "string",
+      "enum": [
+       "show",
+       "undo",
+       "commit",
+       "discard"
+      ],
+      "title": "Action",
+      "default": "show"
+     },
+     "n": {
+      "type": "integer",
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "N",
+      "default": 1
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ChangesIn"
+   },
+   "CheckAreaIn": {
+    "properties": {
+     "aoi": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Aoi"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "aoi"
+    ],
+    "title": "CheckAreaIn"
+   },
+   "CombineIn": {
+    "properties": {
+     "runs": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 8,
+      "minItems": 2,
+      "title": "Runs"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "fill",
+       "intersect",
+       "vote",
+       "replace",
+       "subtract",
+       "seed"
+      ],
+      "title": "Mode"
+     },
+     "iou": {
+      "type": "number",
+      "maximum": 0.95,
+      "minimum": 0.1,
+      "title": "Iou",
+      "default": 0.5
+     },
+     "k": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 8.0,
+        "minimum": 2.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "K"
+     },
+     "region": {
+      "title": "Region"
+     },
+     "polygon": {
+      "title": "Polygon"
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Note",
+      "default": ""
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     },
+     "cover": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cover"
+     },
+     "minScore": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minscore"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "runs",
+     "mode"
+    ],
+    "title": "CombineIn"
+   },
+   "ConfigRenameIn": {
+    "properties": {
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "ConfigRenameIn"
+   },
+   "ConfigSaveIn": {
+    "properties": {
+     "session": {
+      "type": "string",
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Session"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "session",
+     "name"
+    ],
+    "title": "ConfigSaveIn",
+    "description": "A session's round to save as a config (`/api/configs`): the session (its handle or ID), the run (default: the\none it finished on, else its last finished one), the name."
+   },
+   "CopyIn": {
+    "properties": {
+     "session": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Session"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "config": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Config"
+     },
+     "library": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Library"
+     }
+    },
+    "type": "object",
+    "title": "CopyIn",
+    "description": "Where a new session's query comes from: a session's run (its handle; the run it finished on, else its last), or\na saved config by id or name (`library`: the same, as it was called before configs replaced the library)."
+   },
+   "DetectIn": {
+    "properties": {
+     "iou": {
+      "type": "number",
+      "maximum": 1.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Iou",
+      "default": 0.5
+     },
+     "ios": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ios"
+     },
+     "edge": {
+      "type": "number",
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "title": "Edge",
+      "default": 4.0
+     },
+     "own": {
+      "type": "integer",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Own",
+      "default": 1
+     },
+     "dq": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dq"
+     },
+     "thr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thr"
+     },
+     "image_query": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ImageQueryIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M",
+      "default": "owl"
+     },
+     "tiles": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array",
+        "maxItems": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tiles"
+     },
+     "example_text": {
+      "type": "string",
+      "enum": [
+       "visual",
+       "none"
+      ],
+      "title": "Example Text",
+      "default": "visual"
+     },
+     "mask_thr": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 0.99,
+        "minimum": 0.01
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mask Thr"
+     },
+     "scale": {
+      "type": "number",
+      "title": "Scale",
+      "default": 1.0
+     },
+     "bscale": {
+      "type": "number",
+      "maximum": 2.0,
+      "minimum": 0.5,
+      "title": "Bscale",
+      "default": 1.0
+     }
+    },
+    "type": "object",
+    "title": "DetectIn"
+   },
+   "EditIn": {
+    "properties": {
+     "delete": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delete"
+     },
+     "add": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Add"
+     },
+     "merge": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Merge"
+     },
+     "split": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Split"
+     },
+     "reshape": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reshape"
+     },
+     "copy": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Copy"
+     },
+     "draw": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Draw"
+     },
+     "label": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Label"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     },
+     "show": {
+      "type": "boolean",
+      "title": "Show",
+      "default": false
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "EditIn"
+   },
+   "Envelope": {
+    "properties": {
+     "result": {
+      "additionalProperties": true,
+      "type": "object",
+      "title": "Result"
+     },
+     "pictures": {
+      "items": {
+       "$ref": "#/components/schemas/Picture"
+      },
+      "type": "array",
+      "title": "Pictures",
+      "default": []
+     },
+     "card": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Card"
+     },
+     "steps": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Steps"
+     },
+     "pictureUrl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pictureurl"
+     }
+    },
+    "type": "object",
+    "required": [
+     "result"
+    ],
+    "title": "Envelope",
+    "description": "A tool's answer: its JSON, its pictures, what the card shows, the prose that follows it."
+   },
+   "ExampleIn": {
+    "properties": {
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign"
+     },
+     "embedding": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 20000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Embedding"
+     },
+     "key": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ExampleKey"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "tokens": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tokens"
+     },
+     "tokens_neg": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tokens Neg"
+     },
+     "cls": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cls"
+     },
+     "model_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Id"
+     },
+     "pixels": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PixelRef"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "polygon_px": {
+      "anyOf": [
+       {
+        "items": {
+         "items": {
+          "type": "number"
+         },
+         "type": "array",
+         "maxItems": 2,
+         "minItems": 2
+        },
+        "type": "array",
+        "maxItems": 5000,
+        "minItems": 3
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Polygon Px"
+     },
+     "point_px": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array",
+        "maxItems": 2,
+        "minItems": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Point Px"
+     },
+     "scale": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 16.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scale"
+     }
+    },
+    "type": "object",
+    "required": [
+     "sign"
+    ],
+    "title": "ExampleIn"
+   },
+   "ExampleKey": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Image"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     },
+     "box": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Box"
+     },
+     "part": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "exclusiveMaximum": 64.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Part"
+     }
+    },
+    "type": "object",
+    "required": [
+     "image",
+     "box"
+    ],
+    "title": "ExampleKey",
+    "description": "Which cached proposal an example was copied from (PLAN.md section 14.3).\n\nThe examples made from one detected object's outline share its box and are\ntold apart by `part` (PLAN.md 16.6); other keys have none."
+   },
+   "ExamplesIn": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "title": "Image"
+     },
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M",
+      "default": "owl"
+     },
+     "ids": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 50,
+      "title": "Ids"
+     },
+     "boxes": {
+      "items": {
+       "$ref": "#/components/schemas/BoxExampleIn"
+      },
+      "type": "array",
+      "maxItems": 50,
+      "title": "Boxes"
+     },
+     "polygons": {
+      "items": {
+       "$ref": "#/components/schemas/PolygonExampleIn"
+      },
+      "type": "array",
+      "maxItems": 50,
+      "title": "Polygons"
+     },
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/PointExampleIn"
+      },
+      "type": "array",
+      "maxItems": 50,
+      "title": "Points"
+     },
+     "outlines": {
+      "items": {
+       "$ref": "#/components/schemas/OutlineExampleIn"
+      },
+      "type": "array",
+      "maxItems": 10,
+      "title": "Outlines"
+     },
+     "scale": {
+      "type": "number",
+      "title": "Scale",
+      "default": 1.0
+     }
+    },
+    "type": "object",
+    "required": [
+     "image"
+    ],
+    "title": "ExamplesIn",
+    "description": "OWL: cached proposals by id. Local models: boxes, polygons, points or detected\nobjects' outlines, encoded on their server."
+   },
+   "FewshotIn": {
+    "properties": {
+     "point_size": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 20.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Point Size"
+     },
+     "suppress_fraction": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suppress Fraction"
+     },
+     "min_size": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 10000000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Min Size"
+     },
+     "max_size": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 10000000.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Size"
+     },
+     "refine": {
+      "type": "boolean",
+      "title": "Refine",
+      "default": false
+     },
+     "rows": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^[0-9a-f]{16}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rows"
+     }
+    },
+    "type": "object",
+    "title": "FewshotIn",
+    "description": "A Fewshot query's settings (PLAN.md 29.7), each the server's default when absent: the click's brush radius in\ncells, the share of channels Fisher selection drops, and the size limits of a part in cells (min_size None:\nthe brush's area, the plugin's \"= marker\"; max_size 0: none); `refine`: the parts' outlines redrawn by SAM3's\ntracker (E10, the plugin's \"Refine with SAM\"), off by default as there."
+   },
+   "FileIn": {
+    "properties": {
+     "download_url": {
+      "type": "string",
+      "maxLength": 4096,
+      "title": "Download Url"
+     },
+     "file_id": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "File Id"
+     },
+     "mime_type": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mime Type"
+     },
+     "file_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "File Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "download_url",
+     "file_id"
+    ],
+    "title": "FileIn",
+    "description": "A file the user attached in ChatGPT, as ChatGPT passes it (`openai/fileParams`): a download URL that expires."
+   },
+   "FilterIn": {
+    "properties": {
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "minArea": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minarea"
+     },
+     "maxArea": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maxarea"
+     },
+     "unit": {
+      "type": "string",
+      "enum": [
+       "px",
+       "m2"
+      ],
+      "title": "Unit",
+      "default": "px"
+     },
+     "minScore": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minscore"
+     },
+     "inAoi": {
+      "type": "boolean",
+      "title": "Inaoi",
+      "default": false
+     },
+     "minCompactness": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mincompactness"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "FilterIn"
+   },
+   "FinishIn": {
+    "properties": {
+     "summary": {
+      "type": "string",
+      "title": "Summary"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "unverified": {
+      "type": "boolean",
+      "title": "Unverified",
+      "default": false
+     },
+     "save": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Save"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "summary"
+    ],
+    "title": "FinishIn"
+   },
+   "GuessIn": {
+    "properties": {
+     "embeddings": {
+      "items": {
+       "type": "string",
+       "maxLength": 20000
+      },
+      "type": "array",
+      "maxItems": 200,
+      "title": "Embeddings"
+     }
+    },
+    "type": "object",
+    "title": "GuessIn"
+   },
+   "GuessItem": {
+    "properties": {
+     "label": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Label"
+     },
+     "p": {
+      "type": "number",
+      "title": "P"
+     }
+    },
+    "type": "object",
+    "required": [
+     "label",
+     "p"
+    ],
+    "title": "GuessItem"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "ImageQueryIn": {
+    "properties": {
+     "examples": {
+      "items": {
+       "$ref": "#/components/schemas/ExampleIn"
+      },
+      "type": "array",
+      "maxItems": 200,
+      "title": "Examples"
+     },
+     "thr": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 2.0,
+        "minimum": -2.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thr"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "prompt",
+       "similarity",
+       "logistic"
+      ],
+      "title": "Mode",
+      "default": "prompt"
+     },
+     "fewshot": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FewshotIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "title": "ImageQueryIn"
+   },
+   "ImportLayerIn": {
+    "properties": {
+     "url": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 4096
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     },
+     "content": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Content"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "label": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 60
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Label"
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Note",
+      "default": ""
+     },
+     "file": {
+      "properties": {
+       "download_url": {
+        "type": "string"
+       },
+       "file_id": {
+        "type": "string"
+       },
+       "mime_type": {
+        "type": "string"
+       },
+       "file_name": {
+        "type": "string"
+       }
+      },
+      "type": "object",
+      "required": [
+       "download_url",
+       "file_id"
+      ],
+      "description": "A file the user attached to the chat (ChatGPT passes it)"
+     },
+     "processing": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 64
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Processing"
+     },
+     "classes": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string",
+         "maxLength": 60
+        },
+        "type": "array",
+        "maxItems": 20
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Classes"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ImportLayerIn"
+   },
+   "LibraryExample": {
+    "properties": {
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign"
+     },
+     "embedding": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 20000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Embedding"
+     },
+     "crop": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000,
+        "pattern": "^data:image/"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Crop"
+     },
+     "key": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ExampleKey"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "tokens": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tokens"
+     },
+     "tokens_neg": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tokens Neg"
+     },
+     "cls": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200000
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cls"
+     },
+     "model_id": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Id"
+     },
+     "polygon_px": {
+      "anyOf": [
+       {
+        "items": {
+         "items": {
+          "type": "number"
+         },
+         "type": "array",
+         "maxItems": 2,
+         "minItems": 2
+        },
+        "type": "array",
+        "maxItems": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Polygon Px"
+     },
+     "point_px": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array",
+        "maxItems": 2,
+        "minItems": 2
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Point Px"
+     },
+     "scale": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 16.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scale"
+     },
+     "pixels": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PixelRef"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "type": "object",
+    "required": [
+     "sign"
+    ],
+    "title": "LibraryExample"
+   },
+   "LibraryIn": {
+    "properties": {
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M",
+      "default": "owl"
+     },
+     "name": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Name"
+     },
+     "examples": {
+      "items": {
+       "$ref": "#/components/schemas/LibraryExample"
+      },
+      "type": "array",
+      "maxItems": 200,
+      "title": "Examples"
+     },
+     "thr": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 2.0,
+        "minimum": -2.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thr"
+     },
+     "image": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image"
+     },
+     "detect": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DetectIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "guess": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/GuessItem"
+        },
+        "type": "array",
+        "maxItems": 10
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Guess"
+     },
+     "texts": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string",
+         "maxLength": 200,
+         "minLength": 1,
+         "pattern": "^[^,]*$"
+        },
+        "type": "array",
+        "maxItems": 10
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Texts"
+     },
+     "mode": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "prompt",
+         "similarity",
+         "logistic"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mode"
+     }
+    },
+    "type": "object",
+    "required": [
+     "name"
+    ],
+    "title": "LibraryIn"
+   },
+   "MarkIn": {
+    "properties": {
+     "kind": {
+      "type": "string",
+      "enum": [
+       "wrong",
+       "missed"
+      ],
+      "title": "Kind"
+     },
+     "det": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 20
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Det"
+     },
+     "x": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "X"
+     },
+     "y": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Y"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     }
+    },
+    "type": "object",
+    "required": [
+     "kind"
+    ],
+    "title": "MarkIn",
+    "description": "A correction the user clicked on the widget (T3): a detection that is wrong (`det`), or a place where an object\nwas missed (`x`, `y` in image pixels), on the run they looked at."
+   },
+   "OutlineEditIn": {
+    "properties": {
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M"
+     },
+     "key": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Key"
+     },
+     "prompt": {
+      "$ref": "#/components/schemas/OutlinePromptIn"
+     },
+     "window": {
+      "$ref": "#/components/schemas/WindowIn"
+     },
+     "polygon_px": {
+      "items": {
+       "items": {
+        "items": {
+         "items": {
+          "type": "number"
+         },
+         "type": "array",
+         "maxItems": 2,
+         "minItems": 2
+        },
+        "type": "array",
+        "maxItems": 20000
+       },
+       "type": "array",
+       "maxItems": 1000,
+       "minItems": 1
+      },
+      "type": "array",
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Polygon Px"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     },
+     "candidates": {
+      "items": {
+       "$ref": "#/components/schemas/OutlineMaskIn"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "title": "Candidates"
+     },
+     "chosen": {
+      "type": "integer",
+      "exclusiveMaximum": 4.0,
+      "minimum": 0.0,
+      "title": "Chosen",
+      "default": 0
+     }
+    },
+    "type": "object",
+    "required": [
+     "m",
+     "key",
+     "prompt",
+     "window",
+     "polygon_px"
+    ],
+    "title": "OutlineEditIn",
+    "description": "An outline someone edited and saved (PLAN.md 23.6): the prompt and window it was made with, all the masks\nthe last call gave, and the chosen one."
+   },
+   "OutlineExampleIn": {
+    "properties": {
+     "polygon_px": {
+      "items": {
+       "items": {
+        "items": {
+         "items": {
+          "type": "number"
+         },
+         "type": "array",
+         "maxItems": 2,
+         "minItems": 2
+        },
+        "type": "array",
+        "maxItems": 20000
+       },
+       "type": "array",
+       "maxItems": 1000,
+       "minItems": 1
+      },
+      "type": "array",
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Polygon Px"
+     },
+     "box_px": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "maxItems": 4,
+      "minItems": 4,
+      "title": "Box Px"
+     },
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign",
+      "default": 1
+     }
+    },
+    "type": "object",
+    "required": [
+     "polygon_px",
+     "box_px"
+    ],
+    "title": "OutlineExampleIn",
+    "description": "A detected object for +/-: its outline (a detection's `polygon_px`) and its box."
+   },
+   "OutlineKeyIn": {
+    "properties": {
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M"
+     },
+     "key": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Key"
+     }
+    },
+    "type": "object",
+    "required": [
+     "m",
+     "key"
+    ],
+    "title": "OutlineKeyIn"
+   },
+   "OutlineMaskIn": {
+    "properties": {
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     },
+     "polygon_px": {
+      "items": {
+       "items": {
+        "items": {
+         "items": {
+          "type": "number"
+         },
+         "type": "array",
+         "maxItems": 2,
+         "minItems": 2
+        },
+        "type": "array",
+        "maxItems": 20000
+       },
+       "type": "array",
+       "maxItems": 1000,
+       "minItems": 1
+      },
+      "type": "array",
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Polygon Px"
+     }
+    },
+    "type": "object",
+    "required": [
+     "polygon_px"
+    ],
+    "title": "OutlineMaskIn"
+   },
+   "OutlinePromptIn": {
+    "properties": {
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/SelectPointIn"
+      },
+      "type": "array",
+      "maxItems": 16,
+      "title": "Points"
+     },
+     "box_px": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array",
+        "maxItems": 4,
+        "minItems": 4
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Box Px"
+     }
+    },
+    "type": "object",
+    "title": "OutlinePromptIn"
+   },
+   "OutlinesIn": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "title": "Image"
+     },
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M"
+     },
+     "scale": {
+      "type": "number",
+      "title": "Scale",
+      "default": 1.0
+     },
+     "bscale": {
+      "type": "number",
+      "maximum": 2.0,
+      "minimum": 0.5,
+      "title": "Bscale",
+      "default": 1.0
+     },
+     "boxes": {
+      "items": {
+       "items": {
+        "type": "number"
+       },
+       "type": "array",
+       "maxItems": 4,
+       "minItems": 4
+      },
+      "type": "array",
+      "maxItems": 20000,
+      "title": "Boxes"
+     },
+     "on": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "On"
+     },
+     "retry": {
+      "type": "boolean",
+      "title": "Retry",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "image",
+     "m"
+    ],
+    "title": "OutlinesIn",
+    "description": "A box detector's results as a page shows them (PLAN.md 23.5): their boxes as /api/detect gave them."
+   },
+   "PickIn": {
+    "properties": {
+     "iou": {
+      "type": "number",
+      "maximum": 1.0,
+      "exclusiveMinimum": 0.0,
+      "title": "Iou",
+      "default": 0.5
+     },
+     "ios": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ios"
+     },
+     "edge": {
+      "type": "number",
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "title": "Edge",
+      "default": 4.0
+     },
+     "own": {
+      "type": "integer",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Own",
+      "default": 1
+     },
+     "x": {
+      "type": "number",
+      "title": "X"
+     },
+     "y": {
+      "type": "number",
+      "title": "Y"
+     },
+     "examples": {
+      "items": {
+       "$ref": "#/components/schemas/ExampleIn"
+      },
+      "type": "array",
+      "maxItems": 200,
+      "title": "Examples"
+     }
+    },
+    "type": "object",
+    "required": [
+     "x",
+     "y"
+    ],
+    "title": "PickIn"
+   },
+   "Picture": {
+    "properties": {
+     "mimeType": {
+      "type": "string",
+      "title": "Mimetype"
+     },
+     "data": {
+      "type": "string",
+      "title": "Data"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mimeType",
+     "data"
+    ],
+    "title": "Picture"
+   },
+   "PixelRef": {
+    "properties": {
+     "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Id"
+     },
+     "cells": {
+      "type": "integer",
+      "maximum": 100000.0,
+      "minimum": 1.0,
+      "title": "Cells"
+     },
+     "space": {
+      "type": "string",
+      "maxLength": 100,
+      "title": "Space"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "cells",
+     "space"
+    ],
+    "title": "PixelRef",
+    "description": "An example's features for pixel classifiers (PLAN.md 27.6): their id in the feature store, how many cells,\nand the feature space they belong to."
+   },
+   "PointExampleIn": {
+    "properties": {
+     "point_px": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Point Px"
+     },
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign",
+      "default": 1
+     }
+    },
+    "type": "object",
+    "required": [
+     "point_px"
+    ],
+    "title": "PointExampleIn"
+   },
+   "PolygonExampleIn": {
+    "properties": {
+     "polygon_px": {
+      "items": {
+       "items": {
+        "type": "number"
+       },
+       "type": "array",
+       "maxItems": 2,
+       "minItems": 2
+      },
+      "type": "array",
+      "maxItems": 200,
+      "minItems": 3,
+      "title": "Polygon Px"
+     },
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign",
+      "default": 1
+     }
+    },
+    "type": "object",
+    "required": [
+     "polygon_px"
+    ],
+    "title": "PolygonExampleIn"
+   },
+   "QueryIn": {
+    "properties": {
+     "texts": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Texts"
+     },
+     "add": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Add"
+     },
+     "remove": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Remove"
+     },
+     "thr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thr"
+     },
+     "maskThr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maskthr"
+     },
+     "ios": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ios"
+     },
+     "iou": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Iou"
+     },
+     "edge": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edge"
+     },
+     "scale": {
+      "anyOf": [
+       {
+        "enum": [
+         0.25,
+         0.5,
+         1,
+         2,
+         4
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scale"
+     },
+     "exampleText": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "visual",
+         "none"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exampletext"
+     },
+     "boxScale": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Boxscale"
+     },
+     "restore": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Restore"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 32
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R"
+     },
+     "minSize": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minsize"
+     },
+     "refine": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refine"
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "QueryIn"
+   },
+   "Refusal": {
+    "properties": {
+     "code": {
+      "type": "string",
+      "title": "Code"
+     },
+     "message": {
+      "type": "string",
+      "title": "Message"
+     }
+    },
+    "type": "object",
+    "required": [
+     "code",
+     "message"
+    ],
+    "title": "Refusal"
+   },
+   "ReviewIn": {
+    "properties": {
+     "fix": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fix"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "by": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "large",
+         "cells",
+         "disagreements"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "By"
+     },
+     "other": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Other"
+     },
+     "cell": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "maximum": 8192.0,
+        "minimum": 32.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cell"
+     },
+     "restart": {
+      "type": "boolean",
+      "title": "Restart",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ReviewIn"
+   },
+   "RunAtScaleIn": {
+    "properties": {
+     "image": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Image"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "RunAtScaleIn"
+   },
+   "RunIn": {
+    "properties": {
+     "texts": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Texts"
+     },
+     "add": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Add"
+     },
+     "remove": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Remove"
+     },
+     "thr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thr"
+     },
+     "scale": {
+      "anyOf": [
+       {
+        "enum": [
+         0.25,
+         0.5,
+         1,
+         2,
+         4
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scale"
+     },
+     "maskThr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maskthr"
+     },
+     "restore": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Restore"
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 300,
+      "title": "Note",
+      "default": ""
+     },
+     "branch": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 40
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Branch"
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     },
+     "overview": {
+      "type": "boolean",
+      "title": "Overview",
+      "default": true
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 32
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R"
+     },
+     "minSize": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "string",
+        "const": "default"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minsize"
+     },
+     "refine": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refine"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "RunIn"
+   },
+   "SatelliteIn": {
+    "properties": {
+     "west": {
+      "type": "number",
+      "title": "West"
+     },
+     "south": {
+      "type": "number",
+      "title": "South"
+     },
+     "east": {
+      "type": "number",
+      "title": "East"
+     },
+     "north": {
+      "type": "number",
+      "title": "North"
+     },
+     "z": {
+      "type": "integer",
+      "title": "Z"
+     },
+     "name": {
+      "type": "string",
+      "title": "Name"
+     }
+    },
+    "type": "object",
+    "required": [
+     "west",
+     "south",
+     "east",
+     "north",
+     "z",
+     "name"
+    ],
+    "title": "SatelliteIn",
+    "description": "An area drawn on the gallery's map, in degrees, the zoom to fetch it at, and the image's name."
+   },
+   "SaveLayerIn": {
+    "properties": {
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 200
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "workflow": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Workflow"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "SaveLayerIn"
+   },
+   "ScaleIn": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Image"
+     }
+    },
+    "type": "object",
+    "required": [
+     "image"
+    ],
+    "title": "ScaleIn",
+    "description": "The image a published config runs over at scale (`/api/configs/{id}/scale`)."
+   },
+   "SelectPointIn": {
+    "properties": {
+     "point_px": {
+      "items": {
+       "type": "number"
+      },
+      "type": "array",
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Point Px"
+     },
+     "sign": {
+      "type": "integer",
+      "enum": [
+       1,
+       -1
+      ],
+      "title": "Sign",
+      "default": 1
+     }
+    },
+    "type": "object",
+    "required": [
+     "point_px"
+    ],
+    "title": "SelectPointIn"
+   },
+   "SessionIn": {
+    "properties": {
+     "mosaic_id": {
+      "type": "string",
+      "maxLength": 64,
+      "title": "Mosaic Id"
+     },
+     "aoi": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       }
+      ],
+      "title": "Aoi"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "type": "object",
+    "required": [
+     "mosaic_id",
+     "aoi"
+    ],
+    "title": "SessionIn",
+    "description": "A session to check or make: one of the user's mosaics and an AOI (GeoJSON in WGS 84, or [w, s, e, n])."
+   },
+   "SetIntentIn": {
+    "properties": {
+     "text": {
+      "type": "string",
+      "title": "Text"
+     },
+     "aoiBox": {
+      "title": "Aoibox"
+     },
+     "aoiPolygon": {
+      "title": "Aoipolygon"
+     },
+     "clearAoi": {
+      "type": "boolean",
+      "title": "Clearaoi",
+      "default": false
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "text"
+    ],
+    "title": "SetIntentIn"
+   },
+   "SheetIn": {
+    "properties": {
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "pick": {
+      "type": "string",
+      "enum": [
+       "random",
+       "borderline",
+       "boundary",
+       "top",
+       "bottom",
+       "largest",
+       "smallest",
+       "not_in"
+      ],
+      "title": "Pick",
+      "default": "random"
+     },
+     "n": {
+      "type": "integer",
+      "maximum": 48.0,
+      "minimum": 1.0,
+      "title": "N",
+      "default": 24
+     },
+     "seed": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seed"
+     },
+     "other": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Other"
+     },
+     "selection": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Selection"
+     },
+     "at": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "At"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "SheetIn"
+   },
+   "StartSessionIn": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "title": "Image"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model"
+     },
+     "intent": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Intent"
+     },
+     "client": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Client"
+     },
+     "copyQuery": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CopyIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "image"
+    ],
+    "title": "StartSessionIn"
+   },
+   "TransformIn": {
+    "properties": {
+     "op": {
+      "type": "string",
+      "enum": [
+       "buffer",
+       "opening",
+       "closing",
+       "fill_holes",
+       "simplify",
+       "smooth",
+       "rectangles",
+       "convex_hull",
+       "remove_overlaps",
+       "merge_slivers",
+       "dissolve",
+       "split_necks"
+      ],
+      "title": "Op"
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "selection": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Selection"
+     },
+     "distance": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 500.0,
+        "minimum": -500.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance"
+     },
+     "unit": {
+      "type": "string",
+      "enum": [
+       "px",
+       "m"
+      ],
+      "title": "Unit",
+      "default": "px"
+     },
+     "maxArea": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maxarea"
+     },
+     "tolerance": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 100.0,
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tolerance"
+     },
+     "iterations": {
+      "type": "integer",
+      "maximum": 5.0,
+      "minimum": 1.0,
+      "title": "Iterations",
+      "default": 2
+     },
+     "minIou": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.3,
+      "title": "Miniou",
+      "default": 0.8
+     },
+     "note": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Note",
+      "default": ""
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "op"
+    ],
+    "title": "TransformIn"
+   },
+   "UploadImageIn": {
+    "properties": {
+     "file": {
+      "properties": {
+       "download_url": {
+        "type": "string"
+       },
+       "file_id": {
+        "type": "string"
+       },
+       "mime_type": {
+        "type": "string"
+       },
+       "file_name": {
+        "type": "string"
+       }
+      },
+      "type": "object",
+      "required": [
+       "download_url",
+       "file_id"
+      ],
+      "title": "File",
+      "description": "A file the user attached to the chat (ChatGPT passes it)"
+     },
+     "fileName": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 255
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filename"
+     },
+     "fileSize": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Filesize"
+     },
+     "sha1": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^[0-9a-fA-F]{40}$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sha1"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "UploadImageIn"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "ViewMosaicIn": {
+    "properties": {
+     "region": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array",
+        "maxItems": 4,
+        "minItems": 4
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Region"
+     },
+     "aoi": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Aoi"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ViewMosaicIn"
+   },
+   "WandIn": {
+    "properties": {
+     "points": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Points"
+     },
+     "include": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Include"
+     },
+     "exclude": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exclude"
+     },
+     "box": {
+      "title": "Box"
+     },
+     "w": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "W"
+     },
+     "candidate": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Candidate"
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "WandIn"
+   },
+   "WindowIn": {
+    "properties": {
+     "x": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "X"
+     },
+     "y": {
+      "type": "integer",
+      "minimum": 0.0,
+      "title": "Y"
+     },
+     "w": {
+      "type": "integer",
+      "exclusiveMinimum": 0.0,
+      "title": "W"
+     },
+     "h": {
+      "type": "integer",
+      "exclusiveMinimum": 0.0,
+      "title": "H"
+     }
+    },
+    "type": "object",
+    "required": [
+     "x",
+     "y",
+     "w",
+     "h"
+    ],
+    "title": "WindowIn",
+    "description": "A window of the image in image pixels, as /api/select answered it."
+   },
+   "mapflow_interactive__agent__v2__SelectIn": {
+    "properties": {
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "region": {
+      "title": "Region"
+     },
+     "polygon": {
+      "title": "Polygon"
+     },
+     "minArea": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minarea"
+     },
+     "maxArea": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maxarea"
+     },
+     "unit": {
+      "type": "string",
+      "enum": [
+       "px",
+       "m2"
+      ],
+      "title": "Unit",
+      "default": "px"
+     },
+     "minScore": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Minscore"
+     },
+     "maxScore": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maxscore"
+     },
+     "minCompactness": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Mincompactness"
+     },
+     "maxCompactness": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 1.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Maxcompactness"
+     },
+     "label": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 60
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Label"
+     },
+     "made": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "hand",
+         "model"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Made"
+     },
+     "other": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Other"
+     },
+     "how": {
+      "anyOf": [
+       {
+        "type": "string",
+        "enum": [
+         "matched",
+         "unmatched",
+         "inside",
+         "outside",
+         "intersects",
+         "near"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "How"
+     },
+     "distance": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Distance"
+     },
+     "iou": {
+      "type": "number",
+      "maximum": 1.0,
+      "minimum": 0.05,
+      "title": "Iou",
+      "default": 0.5
+     },
+     "mode": {
+      "type": "string",
+      "enum": [
+       "new",
+       "add",
+       "remove",
+       "intersect"
+      ],
+      "title": "Mode",
+      "default": "new"
+     },
+     "selection": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Selection"
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "SelectIn"
+   },
+   "mapflow_interactive__agent__v2__ViewIn": {
+    "properties": {
+     "region": {
+      "title": "Region"
+     },
+     "aoi": {
+      "type": "boolean",
+      "title": "Aoi",
+      "default": false
+     },
+     "run": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run"
+     },
+     "hide": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string",
+         "enum": [
+          "outlines",
+          "labels",
+          "grid",
+          "examples",
+          "aoi",
+          "wand"
+         ]
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hide"
+     },
+     "preview": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 12
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Preview"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ViewIn"
+   },
+   "mapflow_interactive__app__SelectIn": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "title": "Image"
+     },
+     "m": {
+      "type": "string",
+      "maxLength": 40,
+      "title": "M"
+     },
+     "points": {
+      "items": {
+       "$ref": "#/components/schemas/SelectPointIn"
+      },
+      "type": "array",
+      "maxItems": 16,
+      "title": "Points"
+     },
+     "box_px": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array",
+        "maxItems": 4,
+        "minItems": 4
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Box Px"
+     },
+     "window": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/WindowIn"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "scale": {
+      "type": "number",
+      "title": "Scale",
+      "default": 1.0
+     },
+     "all": {
+      "type": "boolean",
+      "title": "All",
+      "default": false
+     }
+    },
+    "type": "object",
+    "required": [
+     "image",
+     "m"
+    ],
+    "title": "SelectIn",
+    "description": "Clicks and a box of one selection (PLAN.md 17.5), and the window of the previous answer."
+   },
+   "mapflow_interactive__app__ViewIn": {
+    "properties": {
+     "x0": {
+      "type": "number",
+      "title": "X0"
+     },
+     "y0": {
+      "type": "number",
+      "title": "Y0"
+     },
+     "x1": {
+      "type": "number",
+      "title": "X1"
+     },
+     "y1": {
+      "type": "number",
+      "title": "Y1"
+     }
+    },
+    "type": "object",
+    "required": [
+     "x0",
+     "y0",
+     "x1",
+     "y1"
+    ],
+    "title": "ViewIn",
+    "description": "A map view in image pixels."
+   }
+  }
+ },
+ "paths": {
+  "/api/agent/v2/mosaics": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "List Images",
+    "description": "The user's MyImagery mosaics with their images' previews (the card's).",
+    "operationId": "list-images",
+    "parameters": [
+     {
+      "name": "mosaic",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 64
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Mosaic"
+      }
+     },
+     {
+      "name": "mosaics",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "type": "string",
+          "maxLength": 64
+         },
+         "maxItems": 50
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Mosaics"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/mosaics/{mosaic}/view": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "View Mosaic",
+    "description": "A mosaic's picture with labelled cells; with aoi, what a session of it would be.",
+    "operationId": "view-mosaic",
+    "parameters": [
+     {
+      "name": "mosaic",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 64,
+       "title": "Mosaic"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ViewMosaicIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/mosaics/{mosaic}/area": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Select Area",
+    "description": "A mosaic's map on the card, to pick a session's area on.",
+    "operationId": "select-area",
+    "parameters": [
+     {
+      "name": "mosaic",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 64,
+       "title": "Mosaic"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/mosaics/{mosaic}/area/check": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Check Area",
+    "description": "What a session of the area drawn would be (the card's).",
+    "operationId": "check-area",
+    "parameters": [
+     {
+      "name": "mosaic",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 64,
+       "title": "Mosaic"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CheckAreaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/images": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Add Image",
+    "description": "A session image: a mosaic cut to an area, or a processing's mosaic and area.",
+    "operationId": "add-image",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AddImageIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Unauthorized",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Unsupported Media Type",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Too Many Requests",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/v2/uploads": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Upload Image",
+    "description": "A GeoTIFF into the user's MyImagery: ChatGPT's attachment, else an upload link.",
+    "operationId": "upload-image",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/UploadImageIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Unauthorized",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Unsupported Media Type",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Too Many Requests",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/v2/uploads/{upload}": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Upload Status",
+    "description": "An upload's state (image-status(upload=...)).",
+    "operationId": "upload-status",
+    "parameters": [
+     {
+      "name": "upload",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "title": "Upload"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/uploads/{upload}/refresh": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Upload Refresh",
+    "description": "The card's, just before it sends the user's file: the link takes the caller's fresh credentials.",
+    "operationId": "upload-refresh",
+    "parameters": [
+     {
+      "name": "upload",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "title": "Upload"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/images/{image}": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Image Status",
+    "description": "An image's size, ground pixel size and encoding per scale; with preview, its picture.",
+    "operationId": "image-status",
+    "parameters": [
+     {
+      "name": "image",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Image"
+      }
+     },
+     {
+      "name": "model",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Model"
+      }
+     },
+     {
+      "name": "preview",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Preview"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "List Sessions",
+    "description": "The user's sessions, the models, their saved configs and what is left of their day.",
+    "operationId": "list-sessions",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Unauthorized",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Unsupported Media Type",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Too Many Requests",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Start Session",
+    "description": "A session: one task on one image.",
+    "operationId": "start-session",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StartSessionIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Unauthorized",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Not Found",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Conflict",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "415": {
+      "description": "Unsupported Media Type",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Unprocessable Entity",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     },
+     "429": {
+      "description": "Too Many Requests",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/intent": {
+   "put": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Set Intent",
+    "description": "The interpretation the user agreed to, and the area of interest.",
+    "operationId": "set-intent",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SetIntentIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/query": {
+   "put": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Set Query",
+    "description": "The query changed without a run (run takes the same changes).",
+    "operationId": "set-query",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/QueryIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/view": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "View",
+    "description": "A picture of the image or a region, with a run's outlines.",
+    "operationId": "view",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/mapflow_interactive__agent__v2__ViewIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/wand": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Wand",
+    "description": "The magic wand: an outline from a point or a box.",
+    "operationId": "wand",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/WandIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/runs": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Run",
+    "description": "The query changed (only what is given) and run, waiting up to 40 s; if still running, wait.",
+    "operationId": "run",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/RunIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/runs/{run}": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Wait",
+    "description": "A running run waited for, as run waits.",
+    "operationId": "wait",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     },
+     {
+      "name": "run",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "A run such as r3, or latest: the pending edits, else the last run",
+       "title": "Run"
+      },
+      "description": "A run such as r3, or latest: the pending edits, else the last run"
+     },
+     {
+      "name": "timeout",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "number",
+       "maximum": 45.0,
+       "minimum": 0,
+       "default": 45.0,
+       "title": "Timeout"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/sheet": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Sheet",
+    "description": "A contact sheet of a run's objects.",
+    "operationId": "sheet",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/SheetIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/audit": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Audit",
+    "description": "Random cells of the area at full resolution, with a run's outlines.",
+    "operationId": "audit",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/AuditIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/audit-points": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Audit Points",
+    "description": "The points audit, for regions: random points, then their labels scored.",
+    "operationId": "audit-points",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/AuditPointsIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/stats": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Stats",
+    "description": "A run's numbers.",
+    "operationId": "stats",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     },
+     {
+      "name": "run",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Run"
+      }
+     },
+     {
+      "name": "by",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "array",
+         "items": {
+          "enum": [
+           "cells",
+           "area"
+          ],
+          "type": "string"
+         }
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "By"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/filter": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Filter ",
+    "description": "A finished run's objects that pass, as a new run.",
+    "operationId": "filter",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/FilterIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/finish": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Finish",
+    "description": "The session ended on a checked run, its edits committed.",
+    "operationId": "finish",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FinishIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/export": {
+   "get": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Export",
+    "description": "A download link for a run's results.",
+    "operationId": "export",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     },
+     {
+      "name": "run",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Run"
+      }
+     },
+     {
+      "name": "format",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "enum": [
+        "geojson",
+        "pixel",
+        "mask",
+        "mask_binary",
+        "csv"
+       ],
+       "type": "string",
+       "default": "geojson",
+       "title": "Format"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/layers": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Import Layer",
+    "description": "A layer of polygons (a file, a link, or a processing's result) as a run to polish.",
+    "operationId": "import-layer",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ImportLayerIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/save-layer": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Save Layer",
+    "description": "A run saved to the user's project as a layer; with workflow, a save's state.",
+    "operationId": "save-layer",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/SaveLayerIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/select": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Select",
+    "description": "A run's objects that meet every condition, as a selection.",
+    "operationId": "select",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/mapflow_interactive__agent__v2__SelectIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/edit": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Edit",
+    "description": "A batch of edits to a run, pending until committed.",
+    "operationId": "edit",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/EditIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/changes": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Changes",
+    "description": "The pending edits: shown, undone, committed or discarded.",
+    "operationId": "changes",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ChangesIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/transform": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Transform",
+    "description": "A run's objects through one post-processing step, as a new run.",
+    "operationId": "transform",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TransformIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/combine": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Combine",
+    "description": "Finished runs combined into a new run.",
+    "operationId": "combine",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CombineIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/sessions/{sid}/review": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Review",
+    "description": "The polish: a fix applied to the part last shown, and the next part.",
+    "operationId": "review",
+    "parameters": [
+     {
+      "name": "sid",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "maxLength": 40,
+       "description": "The session: its handle (s4) or ID",
+       "title": "Sid"
+      },
+      "description": "The session: its handle (s4) or ID"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/ReviewIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/configs/{config}/publish": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Publish",
+    "description": "A saved config registered as one of the user's models on Mapflow (on a test bed: with its engine).",
+    "operationId": "publish",
+    "parameters": [
+     {
+      "name": "config",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 200,
+       "description": "A saved config's name or id",
+       "title": "Config"
+      },
+      "description": "A saved config's name or id"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  },
+  "/api/agent/v2/configs/{config}/run-at-scale": {
+   "post": {
+    "tags": [
+     "tools"
+    ],
+    "summary": "Run At Scale",
+    "description": "A published config over a whole image on a test bed's engine; without image, its last run's state.",
+    "operationId": "run-at-scale",
+    "parameters": [
+     {
+      "name": "config",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 200,
+       "description": "A saved config's name or id",
+       "title": "Config"
+      },
+      "description": "A saved config's name or id"
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/RunAtScaleIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Envelope"
+        }
+       }
+      }
+     },
+     "401": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unauthorized"
+     },
+     "404": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Not Found"
+     },
+     "409": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Conflict"
+     },
+     "415": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unsupported Media Type"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Unprocessable Entity"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Refusal"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    }
+   }
+  }
+ }
+}

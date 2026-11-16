@@ -295,6 +295,47 @@ fallback for configured single-user deployments and stdio. Account caches are
 isolated by token. `MAPFLOW_BASE_URL` defaults to `https://whitemaps-staging.mapflow.ai`;
 set it explicitly for another environment.
 
+## Mapflow Interactive's tools (optional)
+
+With `MAPFLOW_INTERACTIVE_URL` set to Mapflow Interactive's address, this server
+also has its tools: SAM3 and Fewshots in a session on the user's MyImagery imagery,
+for kinds of objects their Mapflow models don't cover, and the polish of any
+result. Without it the server is unchanged, and has no instructions.
+
+Everything the model sees is written here, in `src/interactive/`:
+
+- `tools.ts`: each tool's name, title, three hints, `_meta`, description and
+  arguments (zod), and the app's route it calls (its REST API, `/api/agent/v2`);
+- `texts.ts`: the instructions (after the joint block in `index.ts`, which says
+  when a Mapflow model runs as a processing and when the interactive tools serve)
+  and the prompts `find-objects` and `polish-results`;
+- `next.ts` and `prose.ts`: the app's answers say what to do next as a step and its
+  values (`{"step": "save-layer-state", "workflow": 8123}`), and name longer prose
+  and the models' cards by a key; these are their words, said in the answer's place;
+- `card.ts` and `card/`: the card in the chat (MCP Apps), Leaflet and the card's
+  script inlined into one page, on `list-mosaics` too.
+
+A call goes to its route as the same user (the Mapflow token as Basic on `/mcp`,
+the exchanged token as Bearer on `/mcp/oauth`), and the app's answer comes back as
+its JSON with `next` worded, its pictures as image blocks, the prose that follows,
+and the card's `_meta`. Nothing else is read from the app. The app checks every
+argument again, and refuses one a route doesn't take, saying which it takes; its
+refusals are tool errors in its words, and a 401, being busy and a timeout say so.
+
+Settings (all optional):
+
+- `MAPFLOW_INTERACTIVE_URL`: https, or http on a loopback host (a local version);
+- `MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS` (60): `run` and `wait` answer within 45 s;
+- `MAPFLOW_INTERACTIVE_FEWSHOT` (on): `0` leaves out Fewshots' tool and arguments,
+  where the app serves no Fewshot model;
+- `MAPFLOW_INTERACTIVE_CARD_IMAGES`: origins the card may load images from besides
+  the app (Mapflow's map tiles and previews), comma-separated; `MAPFLOW_BASE_URL`'s
+  by default.
+
+The tests check the tools, texts and words against the app's last tool list as it
+moved here (`src/__tests__/fixtures/interactive/`): change a fixture with a text on
+purpose. The app is released before a change of its routes reaches this server.
+
 ## Logging
 
 The server writes newline-delimited JSON to **stderr** using Pino. stdout is
