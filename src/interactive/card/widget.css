@@ -1,0 +1,205 @@
+/* The session widget (PLAN.md 26.9, T3), inlined into its MCP Apps resource by agent/widget.py.
+   Colours follow the host's theme and its style variables when it sends them. */
+
+:root {
+  --w-bg-light: #ffffff; --w-text-light: #1c1d21; --w-muted-light: #6b7079; --w-line-light: #e2e4e8;
+  --w-soft-light: #f3f4f6;
+  --w-bg-dark: #1f1f23; --w-text-dark: #ececf1; --w-muted-dark: #a1a1aa; --w-line-dark: #3a3a42;
+  --w-soft-dark: #2a2a30;
+  --w-bg: var(--color-background-primary, var(--w-bg-light));
+  --w-text: var(--color-text-primary, var(--w-text-light));
+  --w-muted: var(--color-text-secondary, var(--w-muted-light));
+  --w-line: var(--color-border-primary, var(--w-line-light));
+  --w-soft: var(--color-background-secondary, var(--w-soft-light));
+  --w-accent: #2563eb;
+  --w-ok: #16a34a;
+  --w-warn: #d97706;
+  --w-err: #dc2626;
+  --w-miss: #f97316;
+  --w-map: #18181b;
+  --w-radius: var(--border-radius-md, 8px);
+  color-scheme: light;
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif);
+  font-size: 14px;
+  color: var(--w-text);
+  background: var(--w-bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --w-bg: var(--color-background-primary, var(--w-bg-dark));
+    --w-text: var(--color-text-primary, var(--w-text-dark));
+    --w-muted: var(--color-text-secondary, var(--w-muted-dark));
+    --w-line: var(--color-border-primary, var(--w-line-dark));
+    --w-soft: var(--color-background-secondary, var(--w-soft-dark));
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --w-bg: var(--color-background-primary, var(--w-bg-dark));
+  --w-text: var(--color-text-primary, var(--w-text-dark));
+  --w-muted: var(--color-text-secondary, var(--w-muted-dark));
+  --w-line: var(--color-border-primary, var(--w-line-dark));
+  --w-soft: var(--color-background-secondary, var(--w-soft-dark));
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--w-bg); }
+button { font: inherit; }
+
+.w { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
+.w-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.w-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.w-sub { color: var(--w-muted); font-size: 12px; }
+.w-actions { margin-left: auto; display: flex; gap: 6px; }
+.w-button {
+  border: 1px solid var(--w-line); background: var(--w-bg); color: var(--w-text); border-radius: 6px;
+  padding: 3px 9px; cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+.w-button:hover { border-color: var(--w-accent); color: var(--w-accent); }
+.w-button.primary { background: var(--w-accent); border-color: var(--w-accent); color: #fff; }
+.w-button.primary:hover { color: #fff; filter: brightness(1.1); }
+.w-button:disabled { opacity: 0.5; cursor: default; }
+
+/* A card with a newer one below folds into its head line, the run in brief (widget.js, "Folding"). */
+.w-fold-sum {
+  flex: 1 1 0; min-width: 0; color: var(--w-muted); font-size: 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.w.folded > :not(.w-head), .w.folded .w-actions > :not(#w-unfold) { display: none; }
+.w:not(.folded) #w-unfold, .w:not(.folded) .w-fold-sum { display: none; }
+.w.folded .w-title { max-width: 35%; }
+
+.w-pill { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--w-soft); color: var(--w-muted); white-space: nowrap; }
+.w-pill.done { background: color-mix(in srgb, var(--w-ok) 18%, transparent); color: var(--w-ok); }
+.w-pill.partial { background: color-mix(in srgb, var(--w-warn) 18%, transparent); color: var(--w-warn); }
+.w-pill.error { background: color-mix(in srgb, var(--w-err) 18%, transparent); color: var(--w-err); }
+
+.w-map-wrap { position: relative; height: 340px; border-radius: var(--w-radius); overflow: hidden; background: var(--w-map); }
+.w-map { position: absolute; inset: 0; background: var(--w-map); }
+.w-message {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; max-width: 85%;
+  background: rgba(0, 0, 0, 0.7); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 13px; text-align: center;
+}
+.w-legend {
+  position: absolute; left: 8px; bottom: 8px; z-index: 900; font-size: 11px; color: #fff;
+  background: rgba(0, 0, 0, 0.55); padding: 3px 7px; border-radius: 4px; pointer-events: none;
+}
+
+.w-run { display: flex; flex-direction: column; gap: 4px; }
+.w-run-line { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.w-run-query { color: var(--w-muted); font-size: 12px; }
+.w-note { font-size: 13px; font-style: italic; color: var(--w-muted); }
+.w-progress { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--w-muted); }
+.w-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--w-soft); overflow: hidden; }
+.w-fill { height: 100%; background: var(--w-accent); transition: width 0.4s; }
+.w-newer { font-size: 12px; color: var(--w-muted); }
+.w-newer button { border: 0; background: none; color: var(--w-accent); cursor: pointer; padding: 0; font-size: 12px; }
+
+.w-finished { border-left: 3px solid var(--w-ok); padding: 4px 0 4px 10px; display: flex; flex-direction: column; gap: 6px; }
+.w-summary { margin: 0; white-space: pre-wrap; font-size: 13px; }
+.w-links { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.w-marks { border-top: 1px solid var(--w-line); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.w-hint { font-size: 12px; color: var(--w-muted); margin: 0; }
+.w-mark-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.w-mark {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 4px 2px 8px;
+  border-radius: 999px; border: 1px solid var(--w-line); background: var(--w-soft);
+}
+.w-mark.wrong { border-color: color-mix(in srgb, var(--w-err) 50%, transparent); }
+.w-mark.missed { border-color: color-mix(in srgb, var(--w-miss) 60%, transparent); }
+.w-mark .w-mark-state { color: var(--w-muted); }
+.w-mark .w-mark-state.seen { color: var(--w-ok); }
+.w-mark button { border: 0; background: none; color: var(--w-muted); cursor: pointer; padding: 0 4px; font-size: 13px; line-height: 1; }
+.w-mark button:hover { color: var(--w-err); }
+.w-mark:not(:has(button)) { padding-right: 8px; }
+.w-send { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.w-status { font-size: 12px; color: var(--w-muted); }
+.w-status.error { color: var(--w-err); }
+.w-status.ok { color: var(--w-ok); }
+
+/* add_image: the upload link's file picker in the chat (widget.js, "add_image"). */
+.u-drop {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 22px 12px;
+  border: 2px dashed var(--w-line); border-radius: var(--w-radius); color: var(--w-muted); font-size: 13px;
+  cursor: pointer; text-align: center;
+}
+.u-drop.over { border-color: var(--w-accent); background: color-mix(in srgb, var(--w-accent) 8%, transparent); }
+.u-drop input { display: none; }
+.u-alt { font-size: 12px; color: var(--w-muted); }
+.u-alt button { border: 0; background: none; color: var(--w-accent); cursor: pointer; padding: 0; font-size: 12px; }
+
+/* list_images: the images' thumbnails (widget.js, "list_images"). Inline the grid scrolls past 560 px. */
+.g-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; align-content: start;
+  max-height: 560px; overflow-y: auto;
+}
+.g-tile {
+  display: flex; flex-direction: column; gap: 2px; padding: 0 0 6px; text-align: left; font: inherit; color: inherit;
+  background: var(--w-bg); border: 1px solid var(--w-line); border-radius: var(--w-radius); overflow: hidden;
+}
+.g-tile.link { cursor: pointer; }
+.g-tile.link:hover, .g-tile.link:focus-visible { border-color: var(--w-accent); }
+.g-pic {
+  position: relative; aspect-ratio: 1 / 1; background: var(--w-map); display: flex; align-items: center;
+  justify-content: center; margin-bottom: 4px;
+}
+/* Absolute, so that a tall picture can't stretch the square. */
+.g-pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.g-none { color: #a1a1aa; font-size: 12px; }
+.g-badge {
+  position: absolute; top: 6px; left: 6px; font-size: 11px; padding: 0 6px; border-radius: 999px;
+  background: var(--w-accent); color: #fff;
+}
+.g-name, .g-meta, .g-session { padding: 0 8px; }
+.g-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-name { font-weight: 600; font-size: 13px; }
+.g-meta { font-size: 11px; color: var(--w-muted); }
+.g-meta.error { color: var(--w-err); }
+.g-session { font-size: 11px; color: var(--w-accent); }
+.fullscreen .g-grid { flex: 1; max-height: none; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+/* list_images on the platform: the user's MyImagery, each mosaic with its images' previews under it (widget.js,
+   "list_images"). The list scrolls, not each mosaic's grid. */
+.g-list { display: flex; flex-direction: column; gap: 12px; max-height: 560px; overflow-y: auto; }
+.fullscreen .g-list { flex: 1; min-height: 0; max-height: none; }
+.g-list .g-grid { flex: none; max-height: none; overflow: visible; }
+.g-mosaic { display: flex; flex-direction: column; gap: 6px; }
+.g-mosaic + .g-mosaic { border-top: 1px solid var(--w-line); padding-top: 12px; }
+.g-mosaic-head { display: flex; align-items: center; gap: 10px; }
+.g-mosaic-pic {
+  position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 1px solid var(--w-line);
+  border-radius: 6px; overflow: hidden; background: var(--w-map); cursor: pointer;
+}
+.g-mosaic-pic:hover, .g-mosaic-pic:focus-visible { border-color: var(--w-accent); }
+.g-mosaic-pic .m-thumb img { position: absolute; inset: auto; object-fit: fill; max-width: none; }
+.g-mosaic-text { flex: 1; min-width: 0; }
+.g-mosaic-text .g-name, .g-mosaic-text .g-meta { padding: 0; }
+
+/* A mosaic's thumbnail (widget.js, "A mosaic's thumbnail"): Mapflow's tiles placed in percent, the outline over them. */
+.m-thumb { position: absolute; inset: 0; overflow: hidden; }
+.g-pic .m-thumb img { inset: auto; object-fit: fill; max-width: none; }
+.m-thumb svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.m-thumb path { fill: none; stroke: #4cc9f0; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+/* select_area: a mosaic's map, to pick a session's area on (widget.js, "select_area"). */
+.w-button.active { border-color: var(--w-accent); color: var(--w-accent); background: color-mix(in srgb, var(--w-accent) 10%, transparent); }
+.w-map.drawing { cursor: crosshair; touch-action: none; }
+.w-map.drawing .leaflet-interactive { cursor: crosshair; }
+.a-verdict { font-size: 12px; }
+.a-verdict.muted { color: var(--w-muted); }
+.a-verdict.error { color: var(--w-err); }
+
+/* Leaflet popups: the click-to-correct choices. */
+.w-pop { display: flex; flex-direction: column; gap: 6px; font-size: 13px; min-width: 150px; }
+.w-pop b { font-weight: 600; }
+.w-pop .w-button { font-size: 12px; }
+.leaflet-container { font: inherit; background: var(--w-map); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--w-bg); color: var(--w-text); }
+.leaflet-popup-content { margin: 10px 12px; }
+
+/* Fullscreen: the map takes what the panel leaves. */
+.fullscreen .w { height: 100vh; }
+.fullscreen .w-map-wrap { flex: 1; height: auto; min-height: 200px; }

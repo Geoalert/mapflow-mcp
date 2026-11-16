@@ -20,11 +20,11 @@ import * as geometryTools from "./geometry-tools.js";
 import * as input from "./inputs.js";
 import {
 	addInteractive,
-	type InteractiveCatalog,
-	interactiveTransport,
-	type Manifest,
+	CARD_TOOL_META,
+	type InteractiveConfig,
+	RESULT_META,
 	serverInstructions,
-} from "./interactive.js";
+} from "./interactive/index.js";
 import { recordToolError } from "./logging.js";
 import { loggingTransport } from "./logging-transport.js";
 import { createMapflowClient, type MapflowClient } from "./mapflow-client.js";
@@ -46,13 +46,8 @@ import { createWebLinks } from "./web-links.js";
 
 class LoggedMcpServer extends McpServer {
 	readonly toolNames = new Set<string>();
-	// The Mapflow Interactive manifest whose tools this server lists (src/interactive.ts).
-	interactive?: Manifest;
 	override connect(transport: Transport) {
-		const inner = this.interactive
-			? interactiveTransport(transport, this.interactive)
-			: transport;
-		return super.connect(loggingTransport(inner, this.toolNames));
+		return super.connect(loggingTransport(transport, this.toolNames));
 	}
 }
 
@@ -64,12 +59,12 @@ export function createServer(
 		allowEnvToken?: boolean;
 		geometryCache?: GeometryCache;
 		geometryOwner?: string;
-		interactive?: InteractiveCatalog;
+		/** Mapflow Interactive's tools (src/interactive/), with its app's address; off without. */
+		interactive?: InteractiveConfig;
 		credentials?: ApiCredentials;
 	} = {},
 ) {
-	const manifest = options.interactive?.manifest;
-	const instructions = serverInstructions(manifest);
+	const instructions = serverInstructions(options.interactive);
 	const server = new LoggedMcpServer(
 		{ name: "mapflow-mcp", version: "0.2.0" },
 		instructions ? { instructions } : undefined,
@@ -134,6 +129,11 @@ export function createServer(
 		handler: (args: z.output<z.ZodObject<S>>, extra: Extra) => unknown,
 		behavior: "read" | "create" | "charge" | "update" | "delete" = "read",
 		attachment?: (value: unknown) => EmbeddedResource | TextContent,
+		// A card in the chat on the tool (Mapflow Interactive's on list-mosaics): its page, and what it shows.
+		card?: {
+			_meta: Record<string, unknown>;
+			resultMeta: Record<string, unknown>;
+		},
 	) {
 		server.toolNames.add(name);
 		server.registerTool<z.ZodObject, z.ZodObject<S>>(
@@ -151,6 +151,7 @@ export function createServer(
 					idempotentHint: ["read", "update", "delete"].includes(behavior),
 					openWorldHint: name !== "buffer-aoi",
 				},
+				...(card ? { _meta: card._meta } : {}),
 			},
 			async (args, extra) => {
 				try {
@@ -162,6 +163,7 @@ export function createServer(
 							...(attachment ? [attachment(raw)] : []),
 						],
 						structuredContent: data,
+						...(card ? { _meta: card.resultMeta } : {}),
 					};
 				} catch (error) {
 					recordToolError(error);
@@ -262,6 +264,15 @@ export function createServer(
 		input.listMosaicsSchema,
 		api.pageOutputSchema(api.mosaicSummarySchema),
 		(a, e) => client(e).listMosaics(a),
+		"read",
+		undefined,
+		// With Mapflow Interactive's tools, its card shows the mosaics' images on a map to pick an area on.
+		options.interactive
+			? {
+					_meta: CARD_TOOL_META,
+					resultMeta: { [RESULT_META]: { tool: "list-mosaics" } },
+				}
+			: undefined,
 	);
 	register(
 		"get-mosaic",
@@ -465,17 +476,13 @@ export function createServer(
 			),
 		"charge",
 	);
-	if (options.interactive && manifest) {
+	if (options.interactive) {
 		// Mapflow Interactive's tools call its app as the same user, with what this server calls Mapflow with.
 		const credentials = (extra: Extra): ApiCredentials | undefined =>
 			options.credentials ??
 			extra.authInfo?.token ??
 			(options.allowEnvToken === false ? undefined : Bun.env.MAPFLOW_TOKEN);
-		addInteractive(server, manifest, {
-			catalog: options.interactive,
-			credentials,
-		});
-		server.interactive = manifest;
+		addInteractive(server, options.interactive, credentials);
 	}
 	return server;
 }

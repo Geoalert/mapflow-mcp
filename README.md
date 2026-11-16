@@ -297,32 +297,44 @@ set it explicitly for another environment.
 
 ## Mapflow Interactive's tools (optional)
 
-With `MAPFLOW_INTERACTIVE_URL` set to Mapflow Interactive's address (HTTPS), this
-server also lists the tools, prompts and card page that the app publishes in its
-manifest (`GET /api/agent/v1/manifest`), and forwards each call to the app's
-`POST /api/agent/v1/tools/{tool}` as the same user: the Mapflow token as Basic on
-`/mcp`, the exchanged token as Bearer on `/mcp/oauth`. Without it the server is
-unchanged. No tool of the app's is written here: `src/interactive.ts` holds the
-whole module.
+With `MAPFLOW_INTERACTIVE_URL` set to Mapflow Interactive's address, this server
+also has its tools: SAM3 and Fewshots in a session on the user's MyImagery imagery,
+for kinds of objects their Mapflow models don't cover, and the polish of any
+result. Without it the server is unchanged, and has no instructions.
 
-The manifest and the card's page are read with no user, so the app answers them
-only with `X-Interactive-Key`: set `MAPFLOW_INTERACTIVE_KEY` to the key the app's
-deployment shares (a secret). With the URL set and no key, the server doesn't start.
+Everything the model sees is written here, in `src/interactive/`:
 
-- The manifest is read at start and again every `MAPFLOW_INTERACTIVE_REFRESH_SECONDS`
-  (300) with `If-None-Match`, in the background: this server's own tools never wait
-  for it, and while the app is down the last good manifest stays listed.
-- A manifest is checked before it is listed: each tool's name (kebab-case, at most
-  64 characters, none of this server's), its title and its three hints as explicit
-  booleans, no output schema, sizes, and no tool dropped unless the manifest before
-  it marked the tool as deprecated.
-- The app's tools keep their own JSON Schemas in `tools/list`. They are registered
-  with a schema that lets every argument through; the app checks the arguments.
-- A call may take `MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS` (60). The app's refusals,
-  a 401, a 404, being busy and a timeout come back as tool errors.
-- The manifest's `attach` puts the app's card on one of this server's tools
-  (`list-mosaics`): its page in the tool's `_meta`, and what to show in each of its
-  results' `_meta`.
+- `tools.ts`: each tool's name, title, three hints, `_meta`, description and
+  arguments (zod), and the app's route it calls (its REST API, `/api/agent/v2`);
+- `texts.ts`: the instructions (after the joint block in `index.ts`, which says
+  when a Mapflow model runs as a processing and when the interactive tools serve)
+  and the prompts `find-objects` and `polish-results`;
+- `next.ts` and `prose.ts`: the app's answers say what to do next as a step and its
+  values (`{"step": "save-layer-state", "workflow": 8123}`), and name longer prose
+  and the models' cards by a key; these are their words, said in the answer's place;
+- `card.ts` and `card/`: the card in the chat (MCP Apps), Leaflet and the card's
+  script inlined into one page, on `list-mosaics` too.
+
+A call goes to its route as the same user (the Mapflow token as Basic on `/mcp`,
+the exchanged token as Bearer on `/mcp/oauth`), and the app's answer comes back as
+its JSON with `next` worded, its pictures as image blocks, the prose that follows,
+and the card's `_meta`. Nothing else is read from the app. The app checks every
+argument again, and refuses one a route doesn't take, saying which it takes; its
+refusals are tool errors in its words, and a 401, being busy and a timeout say so.
+
+Settings (all optional):
+
+- `MAPFLOW_INTERACTIVE_URL`: https, or http on a loopback host (a local version);
+- `MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS` (60): `run` and `wait` answer within 45 s;
+- `MAPFLOW_INTERACTIVE_FEWSHOT` (on): `0` leaves out Fewshots' tool and arguments,
+  where the app serves no Fewshot model;
+- `MAPFLOW_INTERACTIVE_CARD_IMAGES`: origins the card may load images from besides
+  the app (Mapflow's map tiles and previews), comma-separated; `MAPFLOW_BASE_URL`'s
+  by default.
+
+The tests check the tools, texts and words against the app's last tool list as it
+moved here (`src/__tests__/fixtures/interactive/`): change a fixture with a text on
+purpose. The app is released before a change of its routes reaches this server.
 
 ## Logging
 

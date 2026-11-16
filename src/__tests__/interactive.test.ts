@@ -1,97 +1,23 @@
+// Mapflow Interactive's tools on this server against a fake app: each call goes to its route as the same user, the
+// app's answer is said as the model reads it, a refusal is a tool error, and the card's page and `_meta` are there.
+
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { CARD_URI, resetCardPage } from "../interactive/card.js";
+import { addressOf, TOOLSET } from "../interactive/client.js";
 import {
-	checkManifest,
-	InteractiveCatalog,
-	interactiveTransport,
-	JOINT_INSTRUCTIONS,
-	type Manifest,
-	ManifestError,
+	type InteractiveConfig,
 	readInteractiveConfig,
-} from "../interactive.js";
+} from "../interactive/index.js";
+import { PROSE } from "../interactive/prose.js";
+import { ROUTES } from "../interactive/tools.js";
 import { createMapflowClient } from "../mapflow-client.js";
 import { createServer } from "../mcp-server.js";
 import { apiFixture } from "./fixtures.js";
 
 const APP = "https://interactive.example.test";
-// The list's item, which the test's fixture has.
-const nth = <T>(items: readonly T[], i: number): T => {
-	const item = items[i];
-	if (item === undefined) throw new Error(`no item ${i}`);
-	return item;
-};
-const PAGE = "ui://mapflow-interactive/card.html";
-const hints = {
-	readOnlyHint: false,
-	destructiveHint: false,
-	openWorldHint: false,
-};
-const fixture = () =>
-	({
-		version: "a1b2c3",
-		server: { name: "mapflow-interactive", title: "Mapflow Interactive" },
-		instructions: "Mapflow Interactive's workflow.",
-		tools: [
-			{
-				name: "start-session",
-				title: "Interactive: Start a session",
-				description: "Starts a session: one task on one image.",
-				inputSchema: {
-					type: "object",
-					properties: {
-						image: { type: "string", description: "The image to work on" },
-						copyQuery: {
-							type: "object",
-							properties: { session: { type: "string" } },
-						},
-					},
-					required: ["image"],
-				},
-				annotations: hints,
-				_meta: { ui: { resourceUri: PAGE } },
-			},
-			{
-				name: "view",
-				title: "Interactive: View the image",
-				description: "A picture of the image or a region.",
-				// Not in the parse's order of keys: it goes out as written.
-				inputSchema: {
-					properties: { sid: { maxLength: 40, type: "string" } },
-					required: ["sid"],
-					type: "object",
-				},
-				annotations: { ...hints, readOnlyHint: true },
-			},
-		],
-		prompts: [
-			{
-				name: "find-objects",
-				title: "Find objects on an image",
-				description: "The workflow.",
-				arguments: [{ name: "task", description: "What to find" }],
-			},
-		],
-		resources: [
-			{
-				uri: PAGE,
-				name: "session",
-				mimeType: "text/html;profile=mcp-app",
-				_meta: { ui: { prefersBorder: true } },
-			},
-		],
-		attach: [
-			{
-				tool: "list-mosaics",
-				_meta: { ui: { resourceUri: PAGE } },
-				resultMeta: { "mapflow-interactive/widget": { tool: "list-mosaics" } },
-			},
-		],
-		deprecated: [],
-	}) as Manifest;
-
+const MAPFLOW = "https://mapflow.example.test";
 const originalFetch = globalThis.fetch;
 type Seen = { url: URL; method: string; headers: Headers; body: unknown };
 let seen: Seen[];
@@ -99,16 +25,17 @@ let answer: (
 	url: URL,
 	init?: RequestInit,
 ) => Response | Promise<Response> | undefined;
-let manifestBody: unknown;
-let client: Client;
-const KEY = "a-shared-key-for-the-tests";
-const config = { baseUrl: APP, key: KEY, refreshMs: 60_000, timeoutMs: 2_000 };
-let reserved: Set<string>;
+let client: Client | undefined;
+
+const envelope = (
+	result: Record<string, unknown>,
+	more: Record<string, unknown> = {},
+) => Response.json({ result, pictures: [], card: null, steps: null, ...more });
 
 beforeEach(() => {
 	seen = [];
 	answer = () => undefined;
-	manifestBody = fixture();
+	resetCardPage();
 	globalThis.fetch = mock(
 		async (url: string | URL | Request, init?: RequestInit) => {
 			const u = new URL(String(url));
@@ -118,33 +45,34 @@ beforeEach(() => {
 				headers: new Headers(init?.headers),
 				body: init?.body ? JSON.parse(String(init.body)) : undefined,
 			});
-			const keyed = ["/api/agent/v1/manifest", "/api/agent/v1/resources"];
-			if (
-				u.origin === APP &&
-				keyed.includes(u.pathname) &&
-				new Headers(init?.headers).get("x-interactive-key") !== KEY
-			)
-				return new Response("key", { status: 401 });
 			const given = await answer(u, init);
 			if (given) return given;
-			if (u.origin === APP && u.pathname === "/api/agent/v1/manifest")
-				return Response.json(manifestBody, { headers: { ETag: '"m1"' } });
+			if (u.origin === APP) return envelope({ ok: true });
 			return Response.json(apiFixture(u));
 		},
 	) as unknown as typeof fetch;
-	reserved = new Set(createServer({ allowEnvToken: false }).toolNames);
 });
 afterEach(async () => {
 	await client?.close();
+	client = undefined;
 	globalThis.fetch = originalFetch;
 });
 
-async function connect(catalog?: InteractiveCatalog) {
+const config = (more: Record<string, string> = {}) =>
+	readInteractiveConfig({
+		MAPFLOW_INTERACTIVE_URL: APP,
+		MAPFLOW_BASE_URL: MAPFLOW,
+		...more,
+	}) as InteractiveConfig;
+
+/** A client of the server, with Mapflow Interactive's tools (`null`: without them). */
+async function connect(interactive: InteractiveConfig | null = config()) {
+	await client?.close();
 	const api = createMapflowClient("test-token");
 	const server = createServer({
 		getClient: () => api,
 		geometryOwner: "test-user",
-		interactive: catalog,
+		interactive: interactive ?? undefined,
 		credentials: "test-token",
 	});
 	client = new Client({ name: "interactive-test", version: "1" });
@@ -154,365 +82,319 @@ async function connect(catalog?: InteractiveCatalog) {
 	return client;
 }
 
-async function loaded() {
-	const catalog = new InteractiveCatalog(config, reserved);
-	await catalog.refresh();
-	expect(catalog.manifest?.version).toBe("a1b2c3");
-	return catalog;
-}
+const text = (result: unknown) =>
+	((
+		(result as { content?: { type: string; text?: string }[] }).content ?? []
+	).find((c) => c.type === "text")?.text ?? "") as string;
 
-test("off without MAPFLOW_INTERACTIVE_URL; an https address and its key otherwise", () => {
+test("off without MAPFLOW_INTERACTIVE_URL; an https address, or http on a loopback host", () => {
 	expect(readInteractiveConfig({})).toBeUndefined();
 	expect(
 		readInteractiveConfig({
 			MAPFLOW_INTERACTIVE_URL: `${APP}/`,
-			MAPFLOW_INTERACTIVE_KEY: ` ${KEY} `,
+			MAPFLOW_BASE_URL: MAPFLOW,
 		}),
 	).toEqual({
 		baseUrl: APP,
-		key: KEY,
-		refreshMs: 300_000,
 		timeoutMs: 60_000,
+		fewshot: true,
+		imageOrigins: [MAPFLOW],
 	});
 	expect(
-		readInteractiveConfig({
-			MAPFLOW_INTERACTIVE_URL: "http://localhost:8000",
-			MAPFLOW_INTERACTIVE_KEY: KEY,
-		})?.baseUrl,
-	).toBe("http://localhost:8000");
+		readInteractiveConfig({ MAPFLOW_INTERACTIVE_URL: "http://127.0.0.1:8300" })
+			?.baseUrl,
+	).toBe("http://127.0.0.1:8300");
 	expect(() =>
 		readInteractiveConfig({
 			MAPFLOW_INTERACTIVE_URL: "http://interactive.example.test",
-			MAPFLOW_INTERACTIVE_KEY: KEY,
 		}),
-	).toThrow("https");
+	).toThrow();
 	expect(() =>
-		readInteractiveConfig({ MAPFLOW_INTERACTIVE_URL: `${APP}/` }),
-	).toThrow("MAPFLOW_INTERACTIVE_KEY");
+		readInteractiveConfig({ MAPFLOW_INTERACTIVE_URL: `${APP}/?k=1` }),
+	).toThrow();
+	expect(
+		readInteractiveConfig({
+			MAPFLOW_INTERACTIVE_URL: APP,
+			MAPFLOW_INTERACTIVE_FEWSHOT: "0",
+			MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS: "90",
+			MAPFLOW_INTERACTIVE_CARD_IMAGES:
+				"https://a.example.test, https://b.example.test/x",
+		}),
+	).toEqual({
+		baseUrl: APP,
+		timeoutMs: 90_000,
+		fewshot: false,
+		imageOrigins: ["https://a.example.test", "https://b.example.test"],
+	});
 });
 
-test("the manifest and the card's page are read with the key; a wrong key lists nothing", async () => {
-	const catalog = await loaded();
-	const reads = seen.filter((s) => s.url.pathname === "/api/agent/v1/manifest");
-	expect(reads.map((s) => s.headers.get("x-interactive-key"))).toEqual([KEY]);
-	const wrong = new InteractiveCatalog(
-		{ ...config, key: "not-the-key" },
-		reserved,
-	);
-	await wrong.refresh();
-	expect(wrong.manifest).toBeUndefined();
-	expect(catalog.manifest).toBeDefined();
-});
-
-test("a manifest is refused unless every tool is complete and none is the server's own", () => {
-	expect(checkManifest(fixture(), reserved).tools).toHaveLength(2);
-	const refused = (change: (m: Manifest) => void, previous?: Manifest) => {
-		const m = fixture();
-		change(m);
-		return () => checkManifest(m, reserved, previous);
-	};
-	const named = (name: string) => (m: Manifest) => {
-		nth(m.tools, 0).name = name;
-	};
-	expect(refused(named("list-mosaics"))).toThrow("name of this server's");
-	expect(refused(named("list_mosaics"))).toThrow(ManifestError);
-	expect(refused(named("Start_Session"))).toThrow(ManifestError);
-	expect(refused(named("x".repeat(65)))).toThrow(ManifestError);
-	expect(
-		refused((m) => {
-			const { openWorldHint: _, ...rest } = nth(m.tools, 0).annotations;
-			nth(m.tools, 0).annotations =
-				rest as Manifest["tools"][number]["annotations"];
-		}),
-	).toThrow(ManifestError);
-	expect(
-		refused((m) =>
-			Object.assign(nth(m.tools, 0), { outputSchema: { type: "object" } }),
-		),
-	).toThrow(ManifestError);
-	expect(
-		refused((m) => {
-			nth(m.tools, 1).title = "";
-		}),
-	).toThrow(ManifestError);
-	expect(
-		refused((m) => {
-			nth(m.attach, 0).tool = "view";
-		}),
-	).toThrow("not a tool of this server's");
-	// A tool goes only after a release that marked it as going.
-	const before = fixture();
-	expect(refused((m) => m.tools.pop(), before)).toThrow(
-		"dropped without a release",
+test("a call's path arguments fill its route, the rest go in the query of a GET and the body otherwise", () => {
+	const wait = addressOf(APP, ROUTES.wait, { sid: "s4", timeout: 10 });
+	expect(wait.url.href).toBe(
+		`${APP}/api/agent/v2/sessions/s4/runs/latest?timeout=10`,
 	);
 	expect(
-		refused((m) => m.tools.pop(), { ...before, deprecated: ["view"] }),
-	).not.toThrow();
+		addressOf(APP, ROUTES.wait, { sid: "s4", run: "r3" }).url.pathname,
+	).toBe("/api/agent/v2/sessions/s4/runs/r3");
+	const stats = addressOf(APP, ROUTES.stats, {
+		sid: "s 4",
+		by: ["cells", "area"],
+		run: undefined,
+	});
+	expect(stats.url.href).toBe(
+		`${APP}/api/agent/v2/sessions/s%204/stats?by=cells&by=area`,
+	);
+	const run = addressOf(APP, ROUTES.run, {
+		sid: "s4",
+		texts: ["tree"],
+		thr: 0.3,
+	});
+	expect(run.url.pathname).toBe("/api/agent/v2/sessions/s4/runs");
+	expect(JSON.parse(run.body as string)).toEqual({ texts: ["tree"], thr: 0.3 });
+	expect(() => addressOf(APP, ROUTES.view, {})).toThrow("sid is required");
 });
 
-test("the catalog keeps the last good manifest and asks again by its ETag", async () => {
-	const catalog = await loaded();
-	answer = (u, init) =>
-		u.pathname === "/api/agent/v1/manifest" &&
-		new Headers(init?.headers).get("if-none-match") === '"m1"'
-			? new Response(null, { status: 304 })
+test("a tool calls its route as the user and answers as the model reads it", async () => {
+	answer = (u) =>
+		u.pathname === "/api/agent/v2/sessions/s4/runs"
+			? envelope(
+					{
+						run: "r1",
+						status: "ready",
+						count: 3,
+						next: { step: "wait", run: "r1" },
+						query: { maskThr: 0.5 },
+					},
+					{
+						pictures: [{ mimeType: "image/jpeg", data: "AAAA" }],
+						card: { tool: "run", sid: "S123", run: "r1", card: 2, key: "k" },
+						steps: "fewshot-steps",
+						pictureUrl: `${APP}/agent/S123/img/p1.jpg`,
+					},
+				)
 			: undefined;
-	await catalog.refresh();
-	expect(catalog.manifest?.version).toBe("a1b2c3");
-	answer = () => Response.json({ ...fixture(), tools: [{ name: "broken" }] });
-	await catalog.refresh();
-	expect(catalog.manifest?.version).toBe("a1b2c3");
-	answer = () => new Response("down", { status: 503 });
-	await catalog.refresh();
-	expect(catalog.manifest?.tools.map((t) => t.name)).toEqual([
-		"start-session",
-		"view",
-	]);
-});
-
-test("the list is the server's own tools as they were, then ours with our schemas as written", async () => {
-	const plain = await connect();
-	const own = (await plain.listTools()).tools;
-	const ownInstructions = plain.getInstructions();
-	await plain.close();
-
-	const c = await connect(await loaded());
-	const listed = (await c.listTools()).tools;
-	expect(listed.map((t) => t.name)).toEqual([
-		...own.map((t) => t.name),
-		"start-session",
-		"view",
-	]);
-	for (const tool of own)
-		if (tool.name !== "list-mosaics")
-			expect(listed.find((t) => t.name === tool.name)).toEqual(tool);
-	const start = listed.find((t) => t.name === "start-session");
-	expect(start).toEqual({
-		name: "start-session",
-		title: "Interactive: Start a session",
-		description: "Starts a session: one task on one image.",
-		inputSchema: nth(fixture().tools, 0).inputSchema,
-		annotations: hints,
-		execution: { taskSupport: "forbidden" }, // the SDK's, as on the server's own tools
-		_meta: { ui: { resourceUri: PAGE } },
-	} as unknown as (typeof listed)[0]);
-	const mosaics = listed.find((t) => t.name === "list-mosaics");
-	expect(mosaics?._meta).toEqual({ ui: { resourceUri: PAGE } });
-	// the platform's tools alone have no instructions; with Mapflow Interactive's, the joint block comes first
-	expect(ownInstructions).toBeUndefined();
-	expect(c.getInstructions()).toBe(
-		`${JOINT_INSTRUCTIONS}\n\nMapflow Interactive's workflow.`,
-	);
-	for (const tool of ["list-models", "calculate-cost", "start-processing"])
-		expect(JOINT_INSTRUCTIONS).toContain(tool);
-	expect(JOINT_INSTRUCTIONS).not.toMatch(/duty|https?:/);
-});
-
-test("a call goes to the app as the user, and its answer comes back as it came", async () => {
-	const result = {
-		content: [
-			{ type: "text", text: '{"sid":"s4"}' },
-			{ type: "image", data: "iVBORw0KGgo=", mimeType: "image/png" },
-		],
-		_meta: {
-			"mapflow-interactive/widget": {
-				tool: "start-session",
-				sid: "abc",
-				card: 1,
-			},
+	const c = await connect();
+	const result = await c.callTool({
+		name: "run",
+		arguments: { sid: "s4", texts: ["tree"], thr: 0.3 },
+	});
+	const call = seen.find((s) => s.url.origin === APP) as Seen;
+	expect(call.method).toBe("POST");
+	expect(call.url.pathname).toBe("/api/agent/v2/sessions/s4/runs");
+	expect(call.body).toEqual({
+		texts: ["tree"],
+		thr: 0.3,
+		note: "",
+		overview: true,
+	});
+	expect(call.headers.get("authorization")).toBe("Basic test-token");
+	expect(call.headers.get("content-type")).toBe("application/json");
+	expect(call.headers.get("x-interactive-toolset")).toBe(TOOLSET);
+	expect(result.isError).toBeFalsy();
+	const content = result.content as {
+		type: string;
+		text?: string;
+		data?: string;
+		mimeType?: string;
+	}[];
+	expect(JSON.parse(content[0]?.text as string)).toEqual({
+		run: "r1",
+		status: "ready",
+		count: 3,
+		next: 'wait(sid, run="r1") for the rest',
+		query: { maskThr: 0.5 },
+	});
+	expect(content[1]).toEqual({
+		type: "image",
+		data: "AAAA",
+		mimeType: "image/jpeg",
+	});
+	expect(content[2]).toEqual({
+		type: "text",
+		text: PROSE["fewshot-steps"] as string,
+	});
+	expect(result._meta).toEqual({
+		"mapflow-interactive/widget": {
+			tool: "run",
+			sid: "S123",
+			run: "r1",
+			card: 2,
+			key: "k",
 		},
-		isError: false,
-	};
-	answer = (u) =>
-		u.pathname === "/api/agent/v1/tools/start-session"
-			? Response.json(result)
-			: undefined;
-	const c = await connect(await loaded());
-	const out = await c.callTool({
-		name: "start-session",
-		arguments: { image: "Harbour", copyQuery: { session: "s1" } },
-	});
-	expect(out as unknown).toEqual(result);
-	const call = seen.find(
-		(s) => s.url.pathname === "/api/agent/v1/tools/start-session",
-	);
-	expect(call?.method).toBe("POST");
-	expect(call?.headers.get("authorization")).toBe("Basic test-token");
-	expect(call?.headers.get("content-type")).toBe("application/json");
-	expect(call?.body).toEqual({
-		image: "Harbour",
-		copyQuery: { session: "s1" },
+		"mapflow-interactive/image_url": `${APP}/agent/S123/img/p1.jpg`,
 	});
 });
 
-test("an exchanged token goes on as Bearer", async () => {
+test("image-status of an upload is its own route; start-session's cards are filled in", async () => {
 	answer = (u) =>
-		u.pathname === "/api/agent/v1/tools/view"
-			? Response.json({ content: [{ type: "text", text: "{}" }] })
-			: undefined;
-	const catalog = await loaded();
-	const api = createMapflowClient({ scheme: "Bearer", token: "exchanged" });
-	const server = createServer({
-		getClient: () => api,
-		allowEnvToken: false,
-		interactive: catalog,
-		credentials: { scheme: "Bearer", token: "exchanged" },
-	});
-	client = new Client({ name: "interactive-test", version: "1" });
-	const [a, b] = InMemoryTransport.createLinkedPair();
-	await server.connect(b);
-	await client.connect(a);
-	await client.callTool({ name: "view", arguments: { sid: "s4" } });
-	const call = seen.find((s) => s.url.pathname === "/api/agent/v1/tools/view");
-	expect(call?.headers.get("authorization")).toBe("Bearer exchanged");
-});
-
-test("the app's refusals, its being busy and a timeout become tool errors", async () => {
-	const c = await connect(await loaded());
-	const error = async (response: () => Response | Promise<Response>) => {
-		answer = (u) =>
-			u.pathname.startsWith("/api/agent/v1/tools/") ? response() : undefined;
-		const out = await c.callTool({ name: "view", arguments: { sid: "s4" } });
-		expect(out.isError).toBe(true);
-		return JSON.parse(nth(out.content as { text: string }[], 0).text);
-	};
-	expect((await error(() => new Response("", { status: 401 }))).code).toBe(
-		"AUTH_REJECTED",
-	);
-	expect((await error(() => new Response("", { status: 404 }))).code).toBe(
-		"NOT_FOUND",
-	);
-	const busy = await error(
-		() => new Response("", { status: 503, headers: { "Retry-After": "7" } }),
-	);
-	expect(busy).toEqual({
-		code: "BUSY",
-		message: "Mapflow Interactive is busy; try again in 7 s",
-	});
-	expect((await error(() => new Response("nope", { status: 200 }))).code).toBe(
-		"INVALID_RESPONSE",
-	);
-	const slow = await error(() => {
-		throw Object.assign(new Error("timed out"), { name: "TimeoutError" });
-	});
-	expect(slow.code).toBe("TIMEOUT");
-	// The app's own refusal is a result with isError, passed on as it came.
-	answer = (u) =>
-		u.pathname.startsWith("/api/agent/v1/tools/")
-			? Response.json({
-					content: [{ type: "text", text: "no session 's9'" }],
-					isError: true,
+		u.pathname === "/api/agent/v2/sessions"
+			? envelope({
+					sid: "s1",
+					models: [{ name: "sam3", model_card: "sam3" }],
+					next: {
+						step: "start-session",
+						copied: false,
+						model: "SAM3",
+						kind: null,
+					},
 				})
 			: undefined;
-	const refused = await c.callTool({ name: "view", arguments: { sid: "s9" } });
-	expect(refused).toEqual({
-		content: [{ type: "text", text: "no session 's9'" }],
-		isError: true,
+	const c = await connect();
+	await c.callTool({ name: "image-status", arguments: { upload: "u1" } });
+	await c.callTool({
+		name: "image-status",
+		arguments: { image: "harbour-1.vrt", preview: true },
 	});
+	const calls = seen.filter((s) => s.url.origin === APP);
+	expect(
+		calls.map((s) => `${s.method} ${s.url.pathname}${s.url.search}`),
+	).toEqual([
+		"GET /api/agent/v2/uploads/u1",
+		"GET /api/agent/v2/images/harbour-1.vrt?preview=true",
+	]);
+	const started = await c.callTool({
+		name: "start-session",
+		arguments: { image: "harbour-1.vrt" },
+	});
+	const data = JSON.parse(text(started));
+	expect(Object.keys(data.models[0])).toEqual([
+		"name",
+		"finds",
+		"well",
+		"badly",
+		"speed",
+		"tunes",
+	]);
+	expect(data.next).toStartWith(
+		"tell the user the live page link and view the whole image; then write down",
+	);
 });
 
-test("the prompt and the card's page come from the app", async () => {
-	answer = (u, init) => {
-		if (u.pathname === "/api/agent/v1/prompts/find-objects")
-			return Response.json({
-				description: "The workflow.",
-				messages: [{ role: "user", content: { type: "text", text: "Steps…" } }],
-			});
-		if (u.pathname === "/api/agent/v1/resources") {
-			if (new Headers(init?.headers).get("if-none-match") === '"p1"')
-				return new Response(null, { status: 304 });
-			return Response.json(
-				{
-					contents: [
-						{
-							uri: PAGE,
-							mimeType: "text/html;profile=mcp-app",
-							text: "<!doctype html>",
-						},
-					],
-				},
-				{ headers: { ETag: '"p1"' } },
-			);
-		}
-		return undefined;
-	};
-	const c = await connect(await loaded());
-	const prompt = await c.getPrompt({
-		name: "find-objects",
-		arguments: { task: "cars" },
-	});
-	expect(nth(prompt.messages, 0).content).toEqual({
-		type: "text",
-		text: "Steps…",
-	});
-	expect(
-		seen.find((s) => s.url.pathname.endsWith("/find-objects"))?.body,
-	).toEqual({
-		task: "cars",
-	});
-	expect((await c.listResources()).resources.map((r) => r.uri)).toEqual([PAGE]);
-	for (const _ of [1, 2]) {
-		const page = await c.readResource({ uri: PAGE });
-		expect((nth(page.contents, 0) as { text: string }).text).toBe(
-			"<!doctype html>",
+test("the app's refusal is the tool's error in its words; a busy app, a refused sign-in and a timeout say so", async () => {
+	const c = await connect(
+		config({ MAPFLOW_INTERACTIVE_TIMEOUT_SECONDS: "0.2" }),
+	);
+	answer = () =>
+		Response.json(
+			{ code: "not_found", message: "no session 's9'" },
+			{ status: 404 },
 		);
-	}
+	const refused = await c.callTool({ name: "view", arguments: { sid: "s9" } });
+	expect(refused.isError).toBe(true);
+	expect(text(refused)).toBe("no session 's9'");
+	answer = () =>
+		Response.json(
+			{ code: "limit", message: "20 sessions a day" },
+			{ status: 429, headers: { "Retry-After": "60" } },
+		);
+	const busy = await c.callTool({
+		name: "add-image",
+		arguments: { mosaic: "m1", aoi: [1, 2, 3, 4] },
+	});
+	expect(JSON.parse(text(busy))).toEqual({
+		code: "BUSY",
+		message: "20 sessions a day",
+	});
+	answer = () => new Response("Sign in", { status: 401 });
 	expect(
-		seen.filter((s) => s.url.pathname === "/api/agent/v1/resources"),
-	).toHaveLength(2);
+		JSON.parse(text(await c.callTool({ name: "list-sessions", arguments: {} })))
+			.code,
+	).toBe("AUTH_REJECTED");
+	answer = (_, init) =>
+		new Promise((_, reject) =>
+			init?.signal?.addEventListener("abort", () =>
+				reject(Object.assign(new Error("t"), { name: "TimeoutError" })),
+			),
+		);
+	const late = JSON.parse(
+		text(await c.callTool({ name: "wait", arguments: { sid: "s4" } })),
+	);
+	expect(late.code).toBe("TIMEOUT");
+	expect(late.message).toContain("call wait for it");
 });
 
-test("the card attached to list-mosaics is in each of its results", async () => {
-	const c = await connect(await loaded());
-	const out = await c.callTool({ name: "list-mosaics", arguments: {} });
-	expect(out._meta).toEqual({
+test("an argument a tool doesn't take reaches the app, which says which it takes", async () => {
+	answer = () =>
+		Response.json(
+			{
+				code: "refused",
+				message:
+					"filter takes no min_area (minArea, not min_area); it takes ...",
+			},
+			{ status: 422 },
+		);
+	const c = await connect();
+	const result = await c.callTool({
+		name: "filter",
+		arguments: { sid: "s4", min_area: 3 },
+	});
+	expect((seen.find((s) => s.url.origin === APP) as Seen).body).toEqual({
+		min_area: 3,
+		unit: "px",
+		inAoi: false,
+	});
+	expect(text(result)).toStartWith("filter takes no min_area");
+});
+
+test("the card: its page from the app's address, its sandbox's domains, and on list-mosaics", async () => {
+	const c = await connect();
+	const resources = (await c.listResources()).resources;
+	expect(resources.map((r) => r.uri)).toEqual([CARD_URI]);
+	const read = await c.readResource({ uri: CARD_URI });
+	const page = read.contents[0] as {
+		text: string;
+		mimeType: string;
+		_meta: Record<string, unknown>;
+	};
+	expect(page.mimeType).toBe("text/html;profile=mcp-app");
+	expect(page.text).toContain(
+		`{"base":"${APP}","brand":"Mapflow interactive","platform":true}`,
+	);
+	expect(page.text).toContain("Leaflet 1.9.4");
+	expect(page.text).not.toContain("url(images/");
+	expect(page._meta.ui).toEqual({
+		csp: { connectDomains: [APP], resourceDomains: [APP, MAPFLOW] },
+		prefersBorder: true,
+	});
+	const tools = (await c.listTools()).tools;
+	expect(tools.find((t) => t.name === "list-mosaics")?._meta).toEqual({
+		ui: { resourceUri: CARD_URI },
+		"ui/resourceUri": CARD_URI,
+		"openai/outputTemplate": CARD_URI,
+	});
+	const listed = await c.callTool({ name: "list-mosaics", arguments: {} });
+	expect(listed._meta).toEqual({
 		"mapflow-interactive/widget": { tool: "list-mosaics" },
 	});
-	expect(out.structuredContent).toBeDefined();
-});
-
-test("a new manifest is listed by the next request, with no restart", async () => {
-	const catalog = await loaded();
-	const next = fixture();
-	next.version = "d4e5f6";
-	next.tools.push({
-		...nth(next.tools, 1),
-		name: "stats",
-		title: "Interactive: Run statistics",
-	});
-	manifestBody = next;
-	answer = (u) =>
-		u.pathname === "/api/agent/v1/manifest"
-			? Response.json(next, { headers: { ETag: '"m2"' } })
-			: undefined;
-	await catalog.refresh();
-	const c = await connect(catalog);
-	expect((await c.listTools()).tools.map((t) => t.name)).toContain("stats");
-});
-
-test("the schemas go out on the wire as the app wrote them, to the byte", async () => {
-	// A client's SDK parses tools/list with its own schema and may order the keys again; what is sent is the app's.
-	const manifest = checkManifest(fixture(), reserved);
-	const sent: JSONRPCMessage[] = [];
-	const inner: Transport = {
-		start: async () => {},
-		send: async (message) => {
-			sent.push(message);
-		},
-		close: async () => {},
-	};
-	const transport = interactiveTransport(inner, manifest);
-	await transport.start();
-	inner.onmessage?.({ jsonrpc: "2.0", id: 7, method: "tools/list" });
-	await transport.send({
-		jsonrpc: "2.0",
-		id: 7,
-		result: { tools: [{ name: "view", inputSchema: { type: "object" } }] },
-	});
-	const listed = (
-		nth(sent, 0) as unknown as { result: { tools: { inputSchema: unknown }[] } }
-	).result.tools;
-	expect(JSON.stringify(nth(listed, 0).inputSchema)).toBe(
-		JSON.stringify(nth(fixture().tools, 1).inputSchema),
+	const cardOnly = tools.filter((t) =>
+		(
+			t._meta as { ui?: { visibility?: string[] } } | undefined
+		)?.ui?.visibility?.includes("app"),
 	);
+	expect(cardOnly.map((t) => t.name).sort()).toEqual([
+		"check-area",
+		"list-images",
+		"upload-refresh",
+	]);
+});
+
+test("without the app: the platform's tools alone, no instructions, no card", async () => {
+	const c = await connect(null);
+	const tools = (await c.listTools()).tools;
+	expect(tools.some((t) => t.name === "start-session")).toBe(false);
+	expect(tools.find((t) => t.name === "list-mosaics")?._meta).toBeUndefined();
+	expect(c.getInstructions()).toBeUndefined();
+});
+
+test("without a Fewshot model its tool and arguments are left out", async () => {
+	const off = await connect(config({ MAPFLOW_INTERACTIVE_FEWSHOT: "0" }));
+	const tools = (await off.listTools()).tools;
+	expect(tools.some((t) => t.name === "audit-points")).toBe(false);
+	const run = tools.find((t) => t.name === "run")?.inputSchema
+		.properties as Record<string, unknown>;
+	expect(Object.keys(run)).not.toContain("refine");
+	const on = await connect(config());
+	expect(
+		(await on.listTools()).tools.some((t) => t.name === "audit-points"),
+	).toBe(true);
 });

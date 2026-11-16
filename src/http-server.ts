@@ -1,6 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { GeometryCache } from "./geometry-cache.js";
-import type { InteractiveCatalog } from "./interactive.js";
+import type { InteractiveConfig } from "./interactive/index.js";
 import {
 	currentLogContext,
 	elapsedMs,
@@ -16,7 +16,7 @@ import { createOAuth, type OAuthConfig, OAuthError } from "./oauth.js";
 
 export function createHttpHandler(
 	config?: OAuthConfig,
-	interactive?: InteractiveCatalog,
+	interactive?: InteractiveConfig,
 ) {
 	const geometryCache = new GeometryCache();
 	const oauth = config ? createOAuth(config) : undefined;

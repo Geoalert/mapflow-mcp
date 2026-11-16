@@ -6,7 +6,12 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignoreUnknown": false
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!src/interactive/card",
+			"!src/__tests__/fixtures/interactive"
+		]
 	},
 	"formatter": {
 		"enabled": true,

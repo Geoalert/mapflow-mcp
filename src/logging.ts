@@ -92,8 +92,7 @@ type Event =
 	| "http.completed"
 	| "tool.completed"
 	| "api.completed"
-	| "oauth.completed"
-	| "interactive.manifest";
+	| "oauth.completed";
 type Fields = {
 	outcome: "success" | "error";
 	durationMs?: number;
@@ -102,7 +101,6 @@ type Fields = {
 	service?: "mapflow" | "nominatim" | "interactive";
 	transport?: "http" | "stdio";
 	route?: "mcp" | "oauth" | "metadata" | "other";
-	manifestVersion?: string;
 };
 export function logEvent(event: Event, fields: Fields) {
 	const active = currentLogContext();
@@ -120,7 +118,6 @@ export function logEvent(event: Event, fields: Fields) {
 			upstream: fields.service,
 			transport: fields.transport,
 			route: fields.route,
-			manifestVersion: fields.manifestVersion,
 		});
 	} catch {
 		// stderr is unavailable; preserve the operation's original result.
