@@ -42,6 +42,8 @@ import {
 	mapflowUserLimitsSchema,
 } from "./schemas.js";
 import { type ApiCredentials, ApiError } from "./transport.js";
+import { localUploads, type UploadService } from "./upload/http.js";
+import { addUploads } from "./upload/tools.js";
 import { createWebLinks } from "./web-links.js";
 
 class LoggedMcpServer extends McpServer {
@@ -62,6 +64,7 @@ export function createServer(
 		/** Mapflow Interactive's tools (src/interactive/), with its app's address; off without. */
 		interactive?: InteractiveConfig;
 		credentials?: ApiCredentials;
+		uploads?: UploadService;
 	} = {},
 ) {
 	const instructions = serverInstructions(options.interactive);
@@ -476,13 +479,22 @@ export function createServer(
 			),
 		"charge",
 	);
-	if (options.interactive) {
-		// Mapflow Interactive's tools call its app as the same user, with what this server calls Mapflow with.
-		const credentials = (extra: Extra): ApiCredentials | undefined =>
-			options.credentials ??
-			extra.authInfo?.token ??
-			(options.allowEnvToken === false ? undefined : Bun.env.MAPFLOW_TOKEN);
-		addInteractive(server, options.interactive, credentials);
-	}
+	const credentials = (extra: Extra): ApiCredentials | undefined =>
+		options.credentials ??
+		extra.authInfo?.token ??
+		(options.allowEnvToken === false ? undefined : Bun.env.MAPFLOW_TOKEN);
+	const status = addUploads(
+		server,
+		options.uploads ?? localUploads(),
+		(extra) => {
+			const given = credentials(extra);
+			if (!given)
+				throw new ApiError("Mapflow token is required", "AUTH_REQUIRED");
+			return { owner: owner(extra), credentials: given };
+		},
+		!!options.interactive,
+	);
+	if (options.interactive)
+		addInteractive(server, options.interactive, credentials, status);
 	return server;
 }

@@ -17,6 +17,8 @@ function unknownWriteOutcome(path: string, init?: RequestInit) {
 			return "Project deletion outcome is unknown. Check get-project/list-projects before retrying; do not assume the project is still active.";
 	}
 	if (init?.method !== "POST") return undefined;
+	if (path.startsWith("/rest/rasters/mosaic/"))
+		return "Image upload outcome is unknown. Check My Imagery before retrying.";
 	if (path === "/rest/processings/v2")
 		return "Processing request outcome is unknown. Check list-processings before retrying; do not automatically repeat the charge.";
 	if (path === "/rest/projects")
@@ -45,7 +47,7 @@ export function createTransport(credentials: ApiCredentials) {
 			response = await fetch(url, {
 				...init,
 				redirect: "error",
-				signal: AbortSignal.timeout(30_000),
+				signal: init?.signal ?? AbortSignal.timeout(30_000),
 				headers: {
 					Accept: "application/json",
 					...init?.headers,

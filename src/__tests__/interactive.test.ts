@@ -339,7 +339,9 @@ test("an argument a tool doesn't take reaches the app, which says which it takes
 test("the card: its page from the app's address, its sandbox's domains, and on list-mosaics", async () => {
 	const c = await connect();
 	const resources = (await c.listResources()).resources;
-	expect(resources.map((r) => r.uri)).toEqual([CARD_URI]);
+	expect(resources.map((r) => r.uri)).toEqual(
+		expect.arrayContaining([CARD_URI, "ui://mapflow/upload.html"]),
+	);
 	const read = await c.readResource({ uri: CARD_URI });
 	const page = read.contents[0] as {
 		text: string;

@@ -110,7 +110,7 @@ MAPFLOW_TOKEN=your_token bun run src/server.ts
 
 ## Tools
 
-The server exposes 21 tools. Parameters and REST mappings are documented in
+The base server exposes 24 tools, including the card-only upload refresh. Parameters and REST mappings are documented in
 [the tool contract specification](docs/tool-contracts.md).
 
 | Tool | Description |
@@ -124,6 +124,9 @@ The server exposes 21 tools. Parameters and REST mappings are documented in
 | `update-project` | Change only the supplied project name/description |
 | `delete-project` | Archive a non-default project and its contents; cancel running workflows |
 | `list-mosaics` | Paginated My Imagery search |
+| `upload-image` | Upload a GeoTIFF to a new or existing My Imagery mosaic |
+| `image-status` | Follow a My Imagery upload until its image is ready |
+| `upload-refresh` | Renew upload credentials from the upload card |
 | `get-mosaic` | Metadata and footprint converted to GeoJSON |
 | `get-mosaic-status` | Data readiness, loading and per-image failures |
 | `list-processings` | Paginated processing search within a project |
@@ -140,6 +143,23 @@ The server exposes 21 tools. Parameters and REST mappings are documented in
 Inputs use camelCase. Lists default to `limit: 20`, `offset: 0` (limit 1–100).
 AOIs must be valid WGS84 Polygon/MultiPolygon geometries. Points and lines from
 geocoding require an explicit positive `bufferMeters`.
+
+### Uploading a GeoTIFF
+
+`upload-image` accepts a chat attachment, or returns a file picker and a single-use upload link.
+All clients use the caller’s Mapflow credentials. Pass `mosaicId` to add the image to an existing
+mosaic, or `name` to create a named mosaic. Pass the returned `upload` to `image-status` for
+the mosaic and image IDs. Interactive uses these same tools when enabled.
+
+HTTP deployments serve the picker, file transfer and status under `/agent/upload/` on the MCP
+origin. The origin defaults to the configured OAuth resource origin, or localhost in legacy mode.
+Set `MAPFLOW_MCP_PUBLIC_URL` to the externally reachable origin when needed. Route this path to
+the same MCP instance and allow the expected file size and upload duration in the reverse proxy.
+Upload links expire after one hour and are held in memory. The relay stages the file in a private
+temporary directory during transfer. The file limit is the lower of 2 GiB and the account limit.
+For local stdio the picker uses a loopback listener; use HTTP for a remotely hosted or containerized
+server whose loopback is inaccessible to the browser. Hosts without inline cards can open the link
+or send the file with the returned command.
 
 Geometry output follows the same policy in `get-geoboundary`, `buffer-aoi`,
 `get-mosaic`, `search-imagery-catalog` and `get-image-metadata`, including all

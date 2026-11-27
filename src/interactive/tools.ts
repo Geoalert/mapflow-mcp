@@ -1401,59 +1401,6 @@ export function interactiveTools(fewshot: boolean): InteractiveTool[] {
 			},
 		},
 		{
-			name: "upload-image",
-			title: "Interactive: Upload a GeoTIFF",
-			description:
-				"Puts a GeoTIFF the user has (attached to the chat, or on their computer) into their MyImagery, as a new mosaic.\n    ChatGPT passes its attachment as file. Otherwise the answer is an upload link: send the file from your code\n    sandbox with its send command, or the user drops it on the card shown in the chat. Follow with\n    image-status(upload=...) until it is ready.",
-			annotations: {
-				readOnlyHint: false,
-				destructiveHint: false,
-				openWorldHint: false,
-			},
-			_meta: {
-				ui: { resourceUri: "ui://mapflow-interactive/session.html" },
-				"ui/resourceUri": "ui://mapflow-interactive/session.html",
-				"openai/outputTemplate": "ui://mapflow-interactive/session.html",
-				"openai/fileParams": ["file"],
-			},
-			route: ROUTES["upload-image"],
-			inputSchema: {
-				file: z
-					.object({
-						download_url: z.string(),
-						file_id: z.string(),
-						mime_type: z.string().optional(),
-						file_name: z.string().optional(),
-					})
-					.optional()
-					.describe("A file the user attached to the chat (ChatGPT passes it)"),
-				fileName: z
-					.string()
-					.max(255)
-					.optional()
-					.describe(
-						"The file's name, when you know it: the card checks the user gives that one",
-					),
-				fileSize: z
-					.int()
-					.gte(1)
-					.optional()
-					.describe("Its size in bytes, when you know it"),
-				sha1: z
-					.string()
-					.regex(/^[0-9a-fA-F]{40}$/)
-					.optional()
-					.describe(
-						"Its SHA-1, when you can compute it (code execution): a file already in the user's MyImagery isn't sent again",
-					),
-				name: z
-					.string()
-					.max(120)
-					.optional()
-					.describe("The new mosaic's name (default: the file's)"),
-			},
-		},
-		{
 			name: "upload-refresh",
 			title: "Interactive: Renew an upload link",
 			description:
