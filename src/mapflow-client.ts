@@ -104,7 +104,7 @@ export function createMapflowClient(token: ApiCredentials) {
 			const req = createProcessingRequestSchema.parse(args);
 			const { model, source } = await validateConfiguration(req);
 			let warnings: string[] = [];
-			if (source?.type === "myImagery") {
+			if (source?.type === "myImagery" && "mosaicId" in source) {
 				const status = await reads.getMosaicStatus(source.mosaicId);
 				if (!status.ready)
 					throw new ApiError(

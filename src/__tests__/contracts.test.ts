@@ -81,6 +81,76 @@ for (const source of [
 		await client.getModels();
 		expect(calls.filter((c) => c.path === "/rest/user/status")).toHaveLength(2);
 	});
+const tileUrl = "https://tiles.example.org/{z}/{x}/{y}.png?style=a%2Fb";
+for (const { source, expected } of [
+	{
+		source: { type: "myImagery" as const, imageId: id },
+		expected: { myImagery: { imageIds: [id] } },
+	},
+	{
+		source: {
+			type: "userDefined" as const,
+			url: tileUrl,
+			zoom: 0,
+			crs: "EPSG:3857",
+		},
+		expected: {
+			userDefined: {
+				sourceType: "XYZ",
+				url: tileUrl,
+				zoom: 0,
+				crs: "EPSG:3857",
+			},
+		},
+	},
+	{
+		source: { type: "userDefined" as const, url: tileUrl },
+		expected: { userDefined: { sourceType: "XYZ", url: tileUrl } },
+	},
+]) {
+	test(`cost and launch send the same ${JSON.stringify(source)} configuration`, async () => {
+		const client = createMapflowClient("token");
+		const { name: _, ...estimate } = config;
+		await client.calculateCost({ ...estimate, source });
+		await client.createProcessing({ ...config, source });
+		for (const path of [
+			"/rest/processing/cost/details/v2",
+			"/rest/processings/v2",
+		]) {
+			const body = calls.find((call) => call.path === path)?.body;
+			expect(body).toMatchObject({ geometry, blocks: config.blocks });
+			expect(body?.params).toEqual({
+				sourceParams: expected,
+				inferenceParams: config.inferenceParams,
+			});
+		}
+		expect(calls.some((call) => call.path.includes("/mosaic/"))).toBe(false);
+		expect(
+			calculateCostRequestSchema.safeParse({
+				wdName: config.wdName,
+				areaSqKm: 1,
+				source,
+			}).success,
+		).toBe(false);
+	});
+}
+test("both tools reject invalid image selectors and XYZ URLs", () => {
+	const { name: _, ...estimate } = config;
+	for (const source of [
+		{ type: "myImagery" },
+		{ type: "myImagery", imageId: "invalid" },
+		{ type: "myImagery", imageId: id, mosaicId: id },
+		{ type: "userDefined", url: "https://tiles.example.org/0/{x}/{y}" },
+		{ type: "userDefined", url: "file:///tiles/{z}/{x}/{y}" },
+	]) {
+		expect(
+			calculateCostRequestSchema.safeParse({ ...estimate, source }).success,
+		).toBe(false);
+		expect(
+			createProcessingRequestSchema.safeParse({ ...config, source }).success,
+		).toBe(false);
+	}
+});
 for (const counter of [
 	"pending_images",
 	"in_progress_images",

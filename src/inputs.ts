@@ -35,7 +35,7 @@ export const searchProviders = [
 	"orbview_svn3",
 	"roscosmos",
 ] as const;
-export const sourceSchema = z.discriminatedUnion("type", [
+export const sourceSchema = z.union([
 	z.strictObject({ type: z.literal("provider"), name: text, zoom }),
 	z.strictObject({
 		type: z.literal("catalog"),
@@ -44,6 +44,19 @@ export const sourceSchema = z.discriminatedUnion("type", [
 		zoom,
 	}),
 	z.strictObject({ type: z.literal("myImagery"), mosaicId: z.uuid() }),
+	z.strictObject({ type: z.literal("myImagery"), imageId: z.uuid() }),
+	z.strictObject({
+		type: z.literal("userDefined"),
+		url: z
+			.url({ protocol: /^https?$/ })
+			.refine(
+				(url) => ["{x}", "{y}", "{z}"].every((token) => url.includes(token)),
+				"XYZ URL must contain {x}, {y} and {z}",
+			)
+			.describe("HTTP(S) XYZ tile URL template containing {x}, {y} and {z}."),
+		zoom,
+		crs: text.optional(),
+	}),
 ]);
 export type Source = z.infer<typeof sourceSchema>;
 const sourceFields = {
@@ -108,7 +121,7 @@ export const calculateCostRequestSchema = z
 		if (v.source && v.source.type !== "provider" && !v.geometry)
 			ctx.addIssue({
 				code: "custom",
-				message: "Catalog and My Imagery require geometry",
+				message: "Catalog, My Imagery and Custom XYZ require geometry",
 				path: ["geometry"],
 			});
 		if (v.inferenceParams && !v.source && !v.dataProvider)
