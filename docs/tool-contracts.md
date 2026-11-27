@@ -211,11 +211,13 @@ Project содержит `id`, `name`, `description`, `isDefault`, `created`, `u
 { type: "provider", name: string, zoom?: integer }
 { type: "catalog", dataProvider: string, imageIds: nonempty string[], zoom?: integer }
 { type: "myImagery", mosaicId: UUID }
+{ type: "myImagery", imageId: UUID }
+{ type: "userDefined", url: XYZ-template, zoom?: integer, crs?: string }
 ```
 
 Преобразование: provider → `params.sourceParams.dataProvider.{providerName,zoom}`; catalog → `imagerySearch.{dataProvider,imageIds,zoom}`; myImagery → `myImagery.{mosaicId}`. Внешние строки провайдеров проверять по поддерживаемым backend значениям; не молча удалять неизвестные фильтры. `Block = {name: string, enabled: boolean}`.
 
-Backend допускает также отдельное My Imagery image (`imageIds`, максимум один), `userDefined` и `aoiDetails`; их пока не открываем. Первому набору достаточно целой мозаики и AOI. Расчёт и запуск передают одинаковый `{myImagery:{mosaicId}}`. Пустой объект теряет выбранный источник и не должен использоваться.
+Для отдельного снимка расчёт и запуск передают `myImagery.imageIds: [imageId]`. Для Custom XYZ оба передают `userDefined` с `sourceType: "XYZ"`, исходным шаблоном URL и указанными zoom и CRS.
 
 Стоимость получать через `POST /rest/processing/cost/details/v2`: `{dataCost, processingCost}`, `cost` — их сумма. `wdName` разрешать в `wdId` через доступные модели. Источники: `rest/CostCalculatorResource.scala`, `rest/json/CalculateCostInput.scala`, `model/SourceParams.scala`, `model/ProcessingParams.scala`, `rest/json/ProcessingJson.scala`.
 

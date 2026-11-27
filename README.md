@@ -235,6 +235,17 @@ Both cost and launch accept a `source`:
 { "type": "myImagery", "mosaicId": "550e8400-e29b-41d4-a716-446655440000" }
 ```
 
+```json
+{ "type": "myImagery", "imageId": "550e8400-e29b-41d4-a716-446655440000" }
+```
+
+```json
+{ "type": "userDefined", "url": "https://tiles.example.org/{z}/{x}/{y}.png", "zoom": 18, "crs": "EPSG:3857" }
+```
+
+For My Imagery, select one image or one mosaic. For Custom XYZ, `zoom` and
+`crs` are optional. Supply the same geometry or geometryId for cost and launch.
+
 `list-models` loads account status and `/rest/models/lab` concurrently and merges
 models by ID. The fresh Lab catalog takes precedence over cached account copies.
 Lab models can be estimated without activation. Immediately before a Lab processing
