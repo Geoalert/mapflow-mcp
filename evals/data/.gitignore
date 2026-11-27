@@ -1,0 +1,4 @@
+# The agent evals' fixtures, ground truth and images: kept on disk, never committed. Only this file is tracked, so
+# the folder exists in a fresh clone.
+*
+!.gitignore

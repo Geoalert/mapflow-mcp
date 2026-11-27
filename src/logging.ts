@@ -98,7 +98,7 @@ type Fields = {
 	durationMs?: number;
 	status?: number;
 	errorCode?: string;
-	service?: "mapflow" | "nominatim";
+	service?: "mapflow" | "nominatim" | "interactive";
 	transport?: "http" | "stdio";
 	route?: "mcp" | "oauth" | "metadata" | "other";
 };

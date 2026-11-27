@@ -1,0 +1,365 @@
+[
+ {
+  "next": {
+   "step": "list-sessions"
+  },
+  "words": "start-session(image=<a session's name>) works on one as it is, with copyQuery={\"config\": <a saved config's name>} to start from that config; a new session is made from the user's MyImagery (list-mosaics)"
+ },
+ {
+  "next": {
+   "step": "list-sessions-local"
+  },
+  "words": "start-session(image=<an image>, copyQuery={\"config\": <a saved config's name>}) starts from a config; publish(config=...) makes its WD, start-processing runs it over an image"
+ },
+ {
+  "next": {
+   "step": "list-images"
+  },
+  "words": "the user sees these on the card in the chat (claude.ai, ChatGPT), each image's preview under its mosaic; a click on an image or a mosaic opens its map to pick the area on, whose “Use this area” writes the mosaic and the area into the chat for add-image(mosaic, aoi). Where no card shows, view-mosaic. The sessions already made from them: list-sessions"
+ },
+ {
+  "next": {
+   "step": "list-images-empty"
+  },
+  "words": "no mosaics in the user's MyImagery yet: upload-image puts a GeoTIFF they have there"
+ },
+ {
+  "next": {
+   "step": "satellite-job"
+  },
+  "words": "follow it with image-status(job=...)"
+ },
+ {
+  "next": {
+   "step": "upload-card"
+  },
+  "words": "in claude.ai and ChatGPT the user picks the file on the card shown with this answer, which then tells you in the chat; give them the link as well, for other clients or if the card fails. Then image-status(upload=...)."
+ },
+ {
+  "next": {
+   "step": "view-mosaic-ok"
+  },
+  "words": "add-image with this mosaic and aoi makes the session"
+ },
+ {
+  "next": {
+   "step": "view-mosaic-change",
+   "problem": "the area holds 812 tiles even at ÷4; at most 500"
+  },
+  "words": "change the area: the area holds 812 tiles even at ÷4; at most 500"
+ },
+ {
+  "next": {
+   "step": "view-mosaic-agree"
+  },
+  "words": "agree an area with the user; give it as cells of this picture (\"B2:D4\", with the same region) or [west, south, east, north], and check it with view-mosaic(aoi=...)"
+ },
+ {
+  "next": {
+   "step": "select-area",
+   "marked": true,
+   "tiles": 3
+  },
+  "words": "the user sees the mosaic's map on the card shown in the chat (claude.ai, ChatGPT); the whole mosaic is marked on it (3 tiles at ×1). The card checks the area, and its “Use this area” writes the mosaic and the area into the chat: then add-image(mosaic, aoi) with them, image-status until it is ready, and start-session. If the user sees no card, show the mosaic with view-mosaic and agree the area as cells of its picture"
+ },
+ {
+  "next": {
+   "step": "select-area",
+   "marked": false
+  },
+  "words": "the user sees the mosaic's map on the card shown in the chat (claude.ai, ChatGPT); the user draws the area on it (the whole mosaic is too large for one session at ×1). The card checks the area, and its “Use this area” writes the mosaic and the area into the chat: then add-image(mosaic, aoi) with them, image-status until it is ready, and start-session. If the user sees no card, show the mosaic with view-mosaic and agree the area as cells of its picture"
+ },
+ {
+  "next": {
+   "step": "add-image",
+   "image": "harbour-1a2b3c.vrt"
+  },
+  "words": "image-status(image='harbour-1a2b3c.vrt') until it is ready, then start-session"
+ },
+ {
+  "next": {
+   "step": "add-image",
+   "image": "houses-9348-0c13d1.vrt",
+   "processing": "9348e0d7-fb58-455d-9b3f-05b123080341",
+   "processingStatus": "OK"
+  },
+  "words": "image-status(image='houses-9348-0c13d1.vrt') until it is ready, then start-session, then import-layer(sid, processing='9348e0d7-fb58-455d-9b3f-05b123080341') to bring its objects in"
+ },
+ {
+  "next": {
+   "step": "add-image",
+   "image": "houses-9348-0c13d1.vrt",
+   "processing": "9348e0d7-fb58-455d-9b3f-05b123080341",
+   "processingStatus": "IN_PROGRESS"
+  },
+  "words": "image-status(image='houses-9348-0c13d1.vrt') until it is ready, then start-session, then import-layer(sid, processing='9348e0d7-fb58-455d-9b3f-05b123080341') to bring its objects in once the processing is done (it is IN_PROGRESS now)"
+ },
+ {
+  "next": {
+   "step": "add-image",
+   "image": "Kate's yard-1a2b3c.vrt"
+  },
+  "words": "image-status(image=\"Kate's yard-1a2b3c.vrt\") until it is ready, then start-session"
+ },
+ {
+  "next": {
+   "step": "upload-ready",
+   "existing": false,
+   "mosaicName": "Harbour",
+   "mosaicId": "m1"
+  },
+  "words": "the image is in MyImagery, in the mosaic 'Harbour' (m1): select-area(mosaic='m1') shows the user its map to pick the area on (claude.ai, ChatGPT; elsewhere view-mosaic), then add-image(mosaic, aoi)"
+ },
+ {
+  "next": {
+   "step": "upload-ready",
+   "existing": true,
+   "mosaicName": "Kate's mosaic",
+   "mosaicId": "5618dabe"
+  },
+  "words": "the image is in MyImagery already, in the mosaic \"Kate's mosaic\" (5618dabe): select-area(mosaic='5618dabe') shows the user its map to pick the area on (claude.ai, ChatGPT; elsewhere view-mosaic), then add-image(mosaic, aoi)"
+ },
+ {
+  "next": {
+   "step": "upload-processing"
+  },
+  "words": "MyImagery is checking the file and making its map layer (a minute or more for a large one): image-status(upload=...) again in a few seconds"
+ },
+ {
+  "next": {
+   "step": "upload-receiving"
+  },
+  "words": "the file is on its way to MyImagery: image-status(upload=...) again in a few seconds"
+ },
+ {
+  "next": {
+   "step": "upload-failed",
+   "error": "not a GeoTIFF.",
+   "again": "same-link"
+  },
+  "words": "it failed: not a GeoTIFF. Tell the user; the same link takes the file again until it expires"
+ },
+ {
+  "next": {
+   "step": "upload-failed",
+   "error": "MyImagery refused it: FileTooBig",
+   "again": "new-link"
+  },
+  "words": "it failed: MyImagery refused it: FileTooBig. Tell the user; upload-image makes a new link"
+ },
+ {
+  "next": {
+   "step": "upload-failed",
+   "error": "None",
+   "again": "attachment"
+  },
+  "words": "it failed: None. Tell the user; upload-image with the attachment tries again, or without it gives a link"
+ },
+ {
+  "next": {
+   "step": "upload-expired"
+  },
+  "words": "the link expired before a file came: upload-image makes a new one"
+ },
+ {
+  "next": {
+   "step": "upload-send"
+  },
+  "words": "send the file through upload_url, whichever way works: (1) the file is in your code sandbox (claude.ai: /mnt/user-data/uploads/...): run the send command there; it reaches this server only if the user allowed its host in claude.ai's Settings → Capabilities → Additional allowed domains; (2) otherwise the user drops the same file on the card shown in the chat (claude.ai, ChatGPT), which then tells you; (3) Claude Code or Codex: the send command with the local file; (4) any other client: give the user upload_url, a page to pick the file on. Then image-status(upload=...) until it is ready"
+ },
+ {
+  "next": {
+   "step": "start-session",
+   "copied": false,
+   "model": "SAM3",
+   "kind": null
+  },
+  "words": "tell the user the live page link and view the whole image; then write down your interpretation and wait for the user's OK before set-intent"
+ },
+ {
+  "next": {
+   "step": "start-session",
+   "copied": true,
+   "model": "SAM3",
+   "kind": null
+  },
+  "words": "tell the user the live page link and view the whole image; the query is copied: run it, then review it as usual"
+ },
+ {
+  "next": {
+   "step": "start-session",
+   "copied": false,
+   "model": "Fewshots",
+   "kind": "fewshot"
+  },
+  "words": "tell the user the live page link and view the whole image; then write down your interpretation and wait for the user's OK before set-intent. Fewshots works differently: follow model.workflow in place of the workflow's steps 3 to 7"
+ },
+ {
+  "next": {
+   "step": "start-session",
+   "copied": true,
+   "model": "Rex-Omni",
+   "kind": "boxes"
+  },
+  "words": "tell the user the live page link and view the whole image; the query is copied: run it, then review it as usual. Rex-Omni works differently from SAM3: follow model.workflow in place of the workflow's steps 3 to 7"
+ },
+ {
+  "next": {
+   "step": "wait",
+   "run": "r3"
+  },
+  "words": "wait(sid, run=\"r3\") for the rest"
+ },
+ {
+  "next": {
+   "step": "fewshot-uses",
+   "main": "r2",
+   "run": "r5"
+  },
+  "words": "Two uses, one call each: select(run=\"r2\", other=\"r5\", how=\"outside\") finds r2's outlines off this mask, to judge on a sheet; combine(runs=[\"r2\", \"r5\"], mode=\"seed\") outlines what it adds. Don't judge the mask by its look: one that merges objects or lies over a whole forest did well on the benches. Judge what comes of it"
+ },
+ {
+  "next": {
+   "step": "mapflow-models"
+  },
+  "words": "run one with run-mapflow-model(sid, model, switches) in a session, as a run to compare with the session's other runs; its blocks' switches are on or off as shown unless you set them"
+ },
+ {
+  "next": {
+   "step": "mapflow-models-none"
+  },
+  "words": "none runs in a session here: SAM3 and Fewshots are the models"
+ },
+ {
+  "next": {
+   "step": "run-mapflow-model"
+  },
+  "words": "check it as any run (sheet, audit) and compare it with the session's other runs; the user runs it over more imagery as a processing on Mapflow"
+ },
+ {
+  "next": {
+   "step": "label-points",
+   "run": "r4",
+   "audit": "pa2"
+  },
+  "words": "label every point from its crop: is the pixel under the crosshair's centre what the intent counts? The crops show nothing of the run, so judge the image alone. Then audit-points(sid, run=\"r4\", audit=\"pa2\", labels={\"1\": \"in\", \"2\": \"out\", ...}); \"unsure\" leaves a point out"
+ },
+ {
+  "next": {
+   "step": "polish-layer"
+  },
+  "words": "polish it: review(by=\"large\") first, then the misses; the random sheet and the audit; finish"
+ },
+ {
+  "next": {
+   "step": "save-layer-state",
+   "workflow": 8123
+  },
+  "words": "the import takes a few seconds: save-layer(workflow=8123) gives its state"
+ },
+ {
+  "next": {
+   "step": "save-layer-state",
+   "workflow": null
+  },
+  "words": "the import takes a few seconds: save-layer(workflow=None) gives its state"
+ },
+ {
+  "next": {
+   "step": "finish",
+   "offerSave": true
+  },
+  "words": "report the count or area with your estimates (or that it is unchecked), the final query and these links; offer to save the run as a config (finish again with save=\"a name\"), which runs on other images (start-session with copyQuery={\"config\": \"the name\"})"
+ },
+ {
+  "next": {
+   "step": "finish",
+   "offerSave": false
+  },
+  "words": "report the count or area with your estimates (or that it is unchecked), the final query and these links"
+ },
+ {
+  "next": {
+   "step": "publish-mapflow",
+   "displayName": "mi-crowns-12",
+   "id": "51b0a6e5"
+  },
+  "words": "it is in the user's models as \"mi-crowns-12\" (list-models lists it): to run it over a mosaic, calculate-cost and then, with the user's OK, start-processing with that model, the mosaic as the imagery ({\"type\": \"myImagery\", \"mosaicId\": ...}) and its geometryId from get-mosaic"
+ },
+ {
+  "next": {
+   "step": "publish-scale",
+   "config": "crowns"
+  },
+  "words": "start-processing(config=\"crowns\", image=...) runs it over a whole image"
+ },
+ {
+  "next": {
+   "step": "run-at-scale-started",
+   "config": "crowns"
+  },
+  "words": "start-processing(config=\"crowns\") again for its state; it takes minutes"
+ },
+ {
+  "next": {
+   "step": "run-at-scale-running"
+  },
+  "words": "still running: ask again in a minute"
+ },
+ {
+  "next": {
+   "step": "selection",
+   "selection": "sel2"
+  },
+  "words": "sheet(selection=\"sel2\") to look at them; edit(action=\"delete\" or \"label\", selection=\"sel2\")"
+ },
+ {
+  "next": {
+   "step": "seed-judge",
+   "selection": "sel3"
+  },
+  "words": "sheet(selection=\"sel3\") to judge them; if they are mostly wrong, edit(delete=[\"sel3\"])"
+ },
+ {
+  "next": {
+   "step": "seed-left",
+   "run": "r6",
+   "regions": "r5",
+   "left": 12
+  },
+  "words": "combine(runs=[\"r6\", \"r5\"], mode=\"seed\") does the 12 seeds left"
+ },
+ {
+  "next": {
+   "step": "review-cells"
+  },
+  "words": "Call review(fix={delete: [numbers], add: [[x, y], ...], split: [...], merge: [[...]]}) with this cell's edits, its points in this picture's pixels: it applies them and shows the next cell."
+ },
+ {
+  "next": {
+   "step": "review-large"
+  },
+  "words": "For each outline over two or more objects (a waist, lobes, two tops): review(fix={add: [[x, y], [x, y], ...]}) with one point on each object in it, in this picture's pixels: it cuts them there, along the edges between them, and shows the next. Delete what isn't an object in the same fix. Go on until it says done."
+ },
+ {
+  "next": {
+   "step": "review-disagreements"
+  },
+  "words": "review(fix={delete: [the wrong ones of in_run], copy: [the right ones of from_other]}) applies them and goes on"
+ },
+ {
+  "next": [
+   {
+    "step": "seed-judge",
+    "selection": "sel3"
+   },
+   {
+    "step": "seed-left",
+    "run": "r6",
+    "regions": "r5",
+    "left": 12
+   }
+  ],
+  "words": "sheet(selection=\"sel3\") to judge them; if they are mostly wrong, edit(delete=[\"sel3\"]); combine(runs=[\"r6\", \"r5\"], mode=\"seed\") does the 12 seeds left"
+ }
+]

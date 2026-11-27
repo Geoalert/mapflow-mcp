@@ -1,0 +1,71 @@
+// Written once from Mapflow Interactive's last tool list (its app's door, mi-6/mi-7) by the app's
+// scripts/port_platform_mcp.py on 2026-11-16 (PLAN.md, "one MCP"); kept here by hand from then on.
+// The prose an answer names by a key (`steps`, a model's `workflow`) and the models' cards
+// (`model_card`), which this server puts in the answer's place.
+
+export const PROSE: Record<string, string> = {
+	"fewshot-steps": `Fewshots classifies every cell of the image (7 px of what it sees, at the query's scale) as like your + or like your − examples (a prototype per class on a frozen encoder's features), smooths the map, cuts it at the threshold, and gives the mask's connected parts as regions, scored by their mean probability. It takes no text, and touching objects merge into one region. It needs − examples as much as +: its classifier has no background of its own, so without negatives nothing is fitted. Each run fits it again on all the examples; where two share cells, the later one's label wins. Its steps:
+1. Examples of both signs before the first run:
+   - clicks: run(add=[{"point": [x, y], "sign": "+"}, {"point": [x, y], "sign": "-"}]), in the last picture's pixels; each labels a brush of (2r+1)² cells around it (r = 2: 5 × 5 cells, 35 px at scale 1);
+   - polygons ({"polygon": [[x, y], ...], "sign": "+"}): every cell inside, the best for regions and textures;
+   - an outline, the wand's ("w3") or a result's ("r2.5", "-r2.5").
+   Start with 2 to 4 + on parts of the class that look different from each other, and 3 to 6 − on what surrounds it and on what looks like it but isn't. run with a note.
+2. Corrections, one or two per run: + clicks or polygons on missed parts; − clicks where a region spills over; − on a region that is wrong as a whole ("-r2.5": its whole outline, holes included).
+3. The threshold, 0.5 by default. Its scores sit in a narrow band, not over a whole probability's range: between about 0.48 and 0.56 the mask goes from nearly everything to nearly nothing, so move it by 0.01 or 0.02. Each run answers curve ([thr, share of the image above it]). sheet(pick="boundary") shows crops centred on the regions' edges. Where the outlines take in what isn't the class, raise thr; where they stop inside it, lower thr; run again (the fit is kept, so it is quick) and look again. Random, largest and smallest sheets show the regions themselves.
+4. The scale: ÷2 or ÷4 for large regions (fields, forest, water: more context per cell, smoother and faster), ×2 for small objects (under ~5 cells, 35 px, across at ×1). r and minSize count cells of the current scale.
+5. Objects: r = 0 or 1 for small ones, so a click's brush stays inside them; minSize (cells; by default the brush's area, (2r+1)²) drops smaller regions: set it to about half the smallest object's cells; refine=true redraws each region's outline with the wand's model from its cells (the run waits for it; regions over a quarter of a tile stay as they are). Touching objects stay one region, so don't count regions: combine(runs=[SAM3's run, this run], mode="seed") outlines them with SAM3.
+Change one thing per run, with a note. The check before you report a number: for regions a points audit, audit-points (40 random points, half inside the mask and half outside, as crops with a crosshair that show nothing of the run), then audit-points again with your label of every point ("in" when the pixel under the crosshair is what the intent counts, "out" when not, "unsure"). Report its pixel precision, recall and IoU with their sample sizes, and stats' area and coverage. For separate objects, the workflow's random sheet and audit cells. finish takes a run of this model after either.`,
+	"polish-steps": `You polish a layer of objects on an aerial or satellite image through Mapflow interactive's tools, the way a reviewer works: the shapes are given, and you fix what is wrong with them. The polish cuts outlines that hold several objects, outlines objects that were missed, deletes what is no object and redraws what is wrong, then checks the result with estimates of its precision and recall. It serves any layer of objects worth fixing by hand: a session's round, the result of a processing on the user's imagery (one of their Mapflow models, or a config they published), or a file of objects. Work in one session (start-session; its id is a short handle such as s4) and give the user the live page link from it.
+
+1. The image and the layer. The image as find-objects' intake brings it in, then start-session on it. A processing's result (on the user's MyImagery): add-image(processing=<its id>) makes the session over its mosaic and area (one larger than a session takes: the user picks a part, and add-image(processing=..., aoi=[west, south, east, north]) takes it), then import-layer(sid, processing=<its id>) brings its objects in; classes=["..."] keeps those of a result that holds several (its first answer names them). The layer is a run of the session (the round find-objects ended at), or a file: import-layer(sid, url="https://...") for a link, or import-layer(sid, content=<the file's bytes in base64>, name="crowns.gpkg"); GeoJSON, a GeoPackage or a zipped Shapefile, in any CRS. It comes in as a run with the file's class and score where it has them, and every tool takes it. A layer without scores has no threshold and no borderline, top or bottom sheets: skip what needs them. The wand works anywhere on the image: its tiles are encoded when the review reaches them. View the layer.
+
+2. Intent. Write your interpretation for the user, briefly:
+   - what counts, with the edge cases ("short dead trees count, shrubs don't");
+   - the area of interest (a part of the image, or all of it);
+   - whether these are objects (cars, trees, buildings) or regions (water, fields, forest), and the size of one in pixels;
+   - when to stop (e.g. "precision and recall both look ≥ 90%").
+   Then stop and wait for the user's answer. Call set-intent only once they have corrected or OK'd it (with the area of interest, which you can give as cells of a preview's grid). Go on without an answer only if the user said up front that you should, or that they can't answer; then say what you assumed.
+
+3. The polish, kept short: in real sessions on the benches it moved F1 by -0.07 to +0.05, and lost when it cut what was one object.
+   - First the merged outlines: review(by="large") shows the largest, 20 on a picture, close up, two pictures in all. A quarter to a half of them hold two or more objects. Cut those you can see are several: a waist, lobes, several tops; a needless cut costs about as much as a missed one. For each, review(fix={add: [[x, y], [x, y]]}) with one point on each object in it, in that picture's pixels: it cuts there, along the edges between them, and shows the next. A point on each scored up to 0.16 higher on the benches than saying only how many ({split: [{id: "r3.12", parts: 2}]}), so that is for when you can't tell where. Delete what is no object in the same fix ({delete: ["r3.12"]}). Go on until it says done.
+   - Then what is missing. Where objects are few and far between (under about 100 on a large image), don't walk the image: what is missed is mostly just under the threshold, so sheet(pick="borderline", at=<lower>), then edit(copy=["r3.b4", ...]) the real ones; and look at all of them on sheets (pick="top", then "bottom") to delete false ones. Where they are many and the overview or an audit shows some with no outline, review(by="cells") goes over the area, one call a cell: review(fix={delete: [12, 15], add: [[x, y], ...], merge: [[4, 5]]}), until it says it is done; a point on an object without its own outline is about 15 tokens and almost always takes the right object. A cell where you see nothing to do takes review(). Numbers are those on the picture; points are its pixels.
+   - Don't stop to look at each edit: the answer names what is odd, and you can fix that in the next call. Zoom (view with a region) only where you are in real doubt, at most a few times: each picture stays in the conversation for the rest of the session.
+
+4. Check once, at the end, before you report any number. Precision: sheet(pick="random"); an outline is right only when it covers one whole object. Misses: the cells you reviewed count, else audit with 6 cells: every object without an outline of its own is one. Report both as estimates with their sample sizes. Don't check again after small edits: the checks hold for them. finish refuses a run nobody checked unless you pass unverified=true, which is only for a quick count the user asked for.
+
+5. Finish. Give the count or area, the estimates and the final query, and call finish with a short summary; it commits the edits and gives the export links. Offer to save the run as a config (finish with save="a name"): its query, settings, resolution and steps, to run on other images (start-session with copyQuery={"session": "s4"} or {"config": "a name"}).
+
+6. Into the project, when the user wants the result there: save-layer(sid, name="a name") saves the finished run (any other with run="r4") as a new layer of their project; save-layer(workflow=<its id>) gives the import's state until it is OK.
+
+Be brief between calls, a line at most: what you write and every picture stay in the conversation, and a long one can run out of room. Coordinates: bare numbers are in the pixels of the last picture with pixels (name another with preview="p4", or "image"); grid cells work too ("B2", "B2:C3"). Budget: when a result carries "budget", tell the user where you are and ask whether to go on. Corrections: when a result carries user_marks, act on them first; its note says how.`,
+};
+
+export const CARDS: Record<string, Record<string, unknown>> = {
+	sam3: {
+		finds:
+			"separate objects, each with its own outline and score, from short texts and examples (outlines)",
+		well: "things with a name and an edge (buildings, cars, crowns, ponds); touching objects stay apart",
+		badly:
+			"regions larger than a tile (water, fields, forest); objects under ~12 px at the scale; dense scenes, where it needs examples",
+		speed:
+			"a first run at a scale encodes ~6 tiles a second; a new query on those tiles ~13 a second",
+		tunes: ["texts", "examples", "thr", "maskThr", "scale"],
+	},
+	fewshot: {
+		finds:
+			"a mask of the image's cells (7 px of what it sees) from your + and − examples alone, no text; its connected parts are regions, scored by their mean probability",
+		well: "a mask to check SAM3 by: steered by clicks, it covered 94 to 100% of the objects on 7 of 8 benches; regions and textures (water, fields, forest, roads, bare soil)",
+		badly:
+			'objects on its own: touching ones merge into one region, so take them through combine(mode="seed"); it spills over what it was shown no − examples of, with a pixel precision of 0.25 to 0.88 on the benches',
+		speed:
+			"about 0.3 s a tile the first time at a scale, so minutes for a large area; a new fit on those tiles is much quicker",
+		tunes: [
+			"examples (clicks, polygons, outlines, each + or −)",
+			"thr",
+			"scale",
+			"r",
+			"minSize",
+			"refine",
+		],
+	},
+};

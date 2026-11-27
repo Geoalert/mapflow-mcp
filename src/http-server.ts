@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { GeometryCache } from "./geometry-cache.js";
+import type { InteractiveConfig } from "./interactive/index.js";
 import {
 	currentLogContext,
 	elapsedMs,
@@ -13,7 +14,10 @@ import { createServer } from "./mcp-server.js";
 import { createNominatimClient } from "./nominatim-client.js";
 import { createOAuth, type OAuthConfig, OAuthError } from "./oauth.js";
 
-export function createHttpHandler(config?: OAuthConfig) {
+export function createHttpHandler(
+	config?: OAuthConfig,
+	interactive?: InteractiveConfig,
+) {
 	const geometryCache = new GeometryCache();
 	const oauth = config ? createOAuth(config) : undefined;
 	const nominatim = createNominatimClient();
@@ -46,6 +50,7 @@ export function createHttpHandler(config?: OAuthConfig) {
 			return new Response("Not Found", { status: 404 });
 		let cacheOwner: string | undefined;
 		let client: ReturnType<typeof createMapflowClient> | undefined;
+		let exchanged: { scheme: "Bearer"; token: string } | undefined;
 		if (isOAuth) {
 			try {
 				const credentials = await observe("oauth.completed", {}, async () =>
@@ -53,6 +58,7 @@ export function createHttpHandler(config?: OAuthConfig) {
 				);
 				client = createMapflowClient(credentials);
 				cacheOwner = credentials.geometryOwner;
+				exchanged = { scheme: "Bearer", token: credentials.token };
 			} catch (error) {
 				if (error instanceof OAuthError) return oauth.errorResponse(error);
 				throw error;
@@ -67,8 +73,10 @@ export function createHttpHandler(config?: OAuthConfig) {
 						geometryCache,
 						geometryOwner: cacheOwner,
 						nominatim,
+						interactive,
+						credentials: exchanged,
 					}
-				: { nominatim, geometryCache },
+				: { nominatim, geometryCache, interactive },
 		);
 		const transport = new WebStandardStreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,

@@ -1,0 +1,1823 @@
+{
+ "name": "mapflow-interactive",
+ "title": "Mapflow interactive",
+ "instructions": "Finding and outlining custom objects on the user's Mapflow imagery (their MyImagery mosaics) with SAM3 and Fewshots, as on Mapflow interactive's session page: the kinds of objects the user's existing models and configs on Mapflow don't cover. Work in a session (start-session) on one image; its id is a short handle such as s4. Give the user its live page link. The prompt find-objects has the full workflow; in short:\n1. Get the image. A GeoTIFF the user attached or has: upload-image puts it into their MyImagery as a new mosaic (ChatGPT passes the attachment as file; elsewhere follow its answer's next: send the file from your code sandbox or the user's computer, else the user drops it on the card in the chat; a file over its limits.max_file the user uploads on Mapflow's My data page, my_data), then image-status(upload=...) until it is ready. An image already there: list-images shows the user their MyImagery on a card in the chat (each mosaic with its images' previews) and lists it for you; list-sessions lists their sessions (a mosaic cut to an area; use one the user names as it is). The area: a mosaic or an image the user clicks on list-images' card, or select-area(mosaic) for one they name, opens its map on the card, whose “Use this area” writes the mosaic and the area into the chat; without a card, view-mosaic shows the mosaic with labelled cells to agree the area on, and view-mosaic(aoi=...) checks it. Then add-image(mosaic, aoi), image-status until it is ready, start-session and view it.\n2. Write your interpretation for the user (what counts with the edge cases, the area of interest, objects or regions and their size, when to stop) and wait for their OK before set-intent.\n3. Then, cheaply: run(texts=[\"tree\"], thr=0.3, scale=2) with plain nouns (by_text says what each finds; curve what each threshold keeps), ×2 for objects under ~100 px; examples only for a kind that is missed or a dense scene: wand(points=[[x, y], ...]), then run(add=[\"w1\", \"w2\"]).\n4. Then polish: review(by=\"large\") shows the largest outlines; review(fix={add: [[x, y], [x, y]]}) with a point on each object inside one that holds several cuts it there, and shows the next, which is what most raises the score. review(by=\"cells\") goes over the area if objects are visibly missing; a point on one the wand outlines. edit makes the same edits outside a review; combine, transform and select work on whole runs. Finish commits the edits.\n5. Before you report a number: sheet(pick=\"random\") (an outline over two objects or part of one is wrong) and the reviewed cells (else an audit of 6): estimates with their sample sizes. Then finish.\nBare numbers are in the last picture's pixels. Other models have their own steps when start-session's answer has model.workflow.\nPolishing (the prompt polish-results, which import-layer's first answer carries too) fixes any layer of objects: a session's round; a file (GeoJSON, a GeoPackage, a zipped Shapefile), which import-layer makes a run; or a processing's result on the user's MyImagery, from one of their Mapflow models or a published config: add-image(processing=...) makes its session and import-layer(sid, processing=...) brings its objects in. save-layer puts any run into the user's project; publish makes a saved config one of the user's models on Mapflow, to run over more of their imagery.\nMapflow's own models (buildings, roads, forest and the like) run on Mapflow as processings, not with these tools: the user starts them there.\nFewshots, beside SAM3: start-session's models has each model's card. Fewshots (model \"fewshot\") classifies the image's pixels from your + and − examples alone, no text. Its regions aren't objects, as touching ones merge, so for objects it works through SAM3: combine(mode=\"seed\") outlines what it adds, and select(how=\"outside\") finds SAM3's outlines off it. Regions and textures take it on its own. run(model=\"fewshot\", add=[...]) works on its own query (the first answer has its steps); run(model=\"sam3\") goes back. Its runs are layers like any other. finish takes audit-points for its regions.",
+ "tools": [
+  {
+   "name": "list-images",
+   "title": "List images",
+   "description": "Your MyImagery: your mosaics, newest first, each with its images (file name, state, size, ground pixel size).\n    The user sees them on a card in the chat (claude.ai, ChatGPT), each image's preview under its mosaic, and picks\n    the area there: a click on a mosaic or an image opens its map, as select-area does. Your sessions (images already\n    cut to an area): list-sessions.",
+   "inputSchema": {
+    "properties": {
+     "mosaic": {
+      "maxLength": 64,
+      "type": "string",
+      "description": "One mosaic's id: only its images, more of them"
+     },
+     "mosaics": {
+      "items": {
+       "maxLength": 64,
+       "type": "string"
+      },
+      "maxItems": 50,
+      "type": "array",
+      "description": "Several mosaics' ids: these, in this order"
+     }
+    },
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html"
+   }
+  },
+  {
+   "name": "list-sessions",
+   "title": "List sessions",
+   "description": "Your sessions: images made from your MyImagery mosaics, each one mosaic cut to an area (start-session and the\n    other tools take their names), newest first; the models, your saved configs, and what is left of your day. The user\n    sees them on a card in the chat (claude.ai, ChatGPT); a click on one an agent worked on opens its live page.",
+   "inputSchema": {
+    "properties": {},
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html"
+   }
+  },
+  {
+   "name": "view-mosaic",
+   "title": "View a mosaic",
+   "description": "A picture of one of your mosaics (its map, its images' outlines and labelled cells; the answer gives each\n    column's longitude and each row's latitude), to choose a session's area on. With aoi: the area drawn, and what a\n    session of it would be (size, ground pixel size, the model's tiles per scale; a prompt runs at a scale within\n    max_tiles), or why it can't be made.",
+   "inputSchema": {
+    "properties": {
+     "mosaic": {
+      "description": "A mosaic's id, from list-images",
+      "maxLength": 64,
+      "type": "string"
+     },
+     "region": {
+      "items": {
+       "type": "number"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array",
+      "description": "The part of the mosaic to show, [west, south, east, north] in degrees; default: the whole mosaic"
+     },
+     "aoi": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "description": "An area to check: cells of this view's picture (\"B2:D4\") or [west, south, east, north] in degrees"
+     }
+    },
+    "required": [
+     "mosaic"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "select-area",
+   "title": "Pick an area on a map",
+   "description": "Shows the user one of their mosaics on a map in the chat (claude.ai, ChatGPT), to pick a session's area on:\n    the whole mosaic is marked when a session of it fits, else they draw the area. The card checks it, and its\n    \"Use this area\" writes the mosaic and the area into the chat for add-image. Where no card shows, use\n    view-mosaic.",
+   "inputSchema": {
+    "properties": {
+     "mosaic": {
+      "description": "A mosaic's id, from list-images",
+      "maxLength": 64,
+      "type": "string"
+     }
+    },
+    "required": [
+     "mosaic"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html",
+    "openai/widgetAccessible": true
+   }
+  },
+  {
+   "name": "check-area",
+   "title": "Check an area",
+   "description": "For the card in the chat only: what a session of the area drawn on its map would be, or why it can't be.",
+   "inputSchema": {
+    "properties": {
+     "mosaic": {
+      "description": "A mosaic's id, from list-images",
+      "maxLength": 64,
+      "type": "string"
+     },
+     "aoi": {
+      "description": "[west, south, east, north] in degrees",
+      "items": {
+       "type": "number"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array"
+     }
+    },
+    "required": [
+     "mosaic",
+     "aoi"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "visibility": [
+      "app"
+     ]
+    },
+    "openai/widgetAccessible": true
+   }
+  },
+  {
+   "name": "add-image",
+   "title": "Make a session image",
+   "description": "Makes a session image: your mosaic cut to the area, or a processing's mosaic and area (one of your sessions of\n    the day), for kinds of objects your Mapflow models don't cover (one made for the kind runs as a processing\n    instead), or to polish a processing's result. Follow with image-status until it is ready, then start-session.",
+   "inputSchema": {
+    "properties": {
+     "mosaic": {
+      "description": "A mosaic's id, from list-images",
+      "maxLength": 64,
+      "type": "string"
+     },
+     "aoi": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "description": "The area of interest: cells of view-mosaic's picture of the same region (\"B2:D4\"), or [west, south, east, north] in degrees"
+     },
+     "region": {
+      "items": {
+       "type": "number"
+      },
+      "maxItems": 4,
+      "minItems": 4,
+      "type": "array",
+      "description": "With cells: the region of the view-mosaic picture they are from"
+     },
+     "title": {
+      "maxLength": 120,
+      "type": "string",
+      "description": "The session's title"
+     },
+     "processing": {
+      "maxLength": 64,
+      "type": "string",
+      "description": "A Mapflow processing's id: a session over its mosaic and area, to polish its result (with aoi, a part of it)"
+     }
+    },
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "upload-image",
+   "title": "Upload a GeoTIFF",
+   "description": "Puts a GeoTIFF the user has (attached to the chat, or on their computer) into their MyImagery, as a new mosaic.\n    ChatGPT passes its attachment as file. Otherwise the answer is an upload link: send the file from your code\n    sandbox with its send command, or the user drops it on the card shown in the chat. Follow with\n    image-status(upload=...) until it is ready.",
+   "inputSchema": {
+    "properties": {
+     "file": {
+      "description": "A file the user attached to the chat (ChatGPT passes it)",
+      "properties": {
+       "download_url": {
+        "type": "string"
+       },
+       "file_id": {
+        "type": "string"
+       },
+       "mime_type": {
+        "type": "string"
+       },
+       "file_name": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "download_url",
+       "file_id"
+      ],
+      "type": "object"
+     },
+     "fileName": {
+      "maxLength": 255,
+      "type": "string",
+      "description": "The file's name, when you know it: the card checks the user gives that one"
+     },
+     "fileSize": {
+      "minimum": 1,
+      "type": "integer",
+      "description": "Its size in bytes, when you know it"
+     },
+     "sha1": {
+      "pattern": "^[0-9a-fA-F]{40}$",
+      "type": "string",
+      "description": "Its SHA-1, when you can compute it (code execution): a file already in the user's MyImagery isn't sent again"
+     },
+     "name": {
+      "maxLength": 120,
+      "type": "string",
+      "description": "The new mosaic's name (default: the file's)"
+     }
+    },
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html",
+    "openai/fileParams": [
+     "file"
+    ]
+   }
+  },
+  {
+   "name": "upload-refresh",
+   "title": "Renew an upload link",
+   "description": "For the card in the chat only, just before it sends the user's file through an upload link.",
+   "inputSchema": {
+    "properties": {
+     "upload": {
+      "description": "The upload's id",
+      "maxLength": 40,
+      "type": "string"
+     }
+    },
+    "required": [
+     "upload"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "visibility": [
+      "app"
+     ]
+    },
+    "openai/widgetAccessible": true
+   }
+  },
+  {
+   "name": "image-status",
+   "title": "Image status",
+   "description": "An image's size and ground pixel size, and how far the model has encoded its tiles, per scale (with preview,\n    its picture too); or an upload link's or satellite job's state.",
+   "inputSchema": {
+    "properties": {
+     "image": {
+      "type": "string",
+      "description": "An image name"
+     },
+     "upload": {
+      "type": "string",
+      "description": "An upload's id, from upload-image or add-image"
+     },
+     "job": {
+      "type": "string",
+      "description": "A satellite job id from add-image"
+     },
+     "model": {
+      "type": "string",
+      "description": "The model (default: the first local one)"
+     },
+     "preview": {
+      "default": false,
+      "description": "With image: also a picture of the whole image, to see it before starting a session",
+      "type": "boolean"
+     }
+    },
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "start-session",
+   "title": "Start a session",
+   "description": "Starts a session: one task on one image. Returns its handle (sid), the live page link for the user, the image's\n    size, the model's capabilities and defaults, and the scales with their ground pixel size and number of tiles.",
+   "inputSchema": {
+    "$defs": {
+     "CopyIn": {
+      "description": "Where a new session's query comes from: a session's run (its handle; the run it finished on, else its last), or\na saved config by id or name (`library`: the same, as it was called before configs replaced the library).",
+      "properties": {
+       "session": {
+        "maxLength": 40,
+        "type": "string"
+       },
+       "run": {
+        "maxLength": 8,
+        "type": "string"
+       },
+       "config": {
+        "maxLength": 200,
+        "type": "string"
+       },
+       "library": {
+        "maxLength": 200,
+        "type": "string"
+       }
+      },
+      "type": "object"
+     }
+    },
+    "properties": {
+     "image": {
+      "description": "The image to work on",
+      "type": "string"
+     },
+     "model": {
+      "type": "string",
+      "description": "The model: sam3 (SAM3, the default: separate objects from short texts and examples); or fewshot (Fewshots: a mask from + and − examples, no text: regions and textures, and what SAM3 misses). A session can use both: set-query and run take model"
+     },
+     "intent": {
+      "type": "string",
+      "description": "The task, if already clear"
+     },
+     "client": {
+      "type": "string",
+      "description": "Your client's name, if MCP doesn't report it"
+     },
+     "copyQuery": {
+      "$ref": "#/$defs/CopyIn",
+      "description": "Start from another session's query ({\"session\": \"s4\"[, \"run\": \"r5\"]}) or a saved config ({\"config\": \"a name\"}), to run it on this image"
+     }
+    },
+    "required": [
+     "image"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html"
+   }
+  },
+  {
+   "name": "set-intent",
+   "title": "Set the task",
+   "description": "Records the interpretation the user agreed to, and the area of interest (detections are counted inside it,\n    and audit samples it).",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "text": {
+      "description": "The agreed interpretation: what counts, edge cases, when to stop",
+      "type": "string"
+     },
+     "aoiBox": {
+      "description": "The area of interest: [x0, y0, x1, y1] or cells \"B2:D4\""
+     },
+     "aoiPolygon": {
+      "description": "The area of interest: [[x, y], ...]"
+     },
+     "clearAoi": {
+      "default": false,
+      "type": "boolean"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     }
+    },
+    "required": [
+     "sid",
+     "text"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "view",
+   "title": "View the image",
+   "description": "A picture of the image or a region: the run's outlines green with their numbers (edits' cyan), examples blue + and red −, the\n    area of interest yellow, a grid of labelled cells. k is image px per picture px.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "region": {
+      "description": "[x0, y0, x1, y1] or cells \"B2:C3\"; default: the whole image"
+     },
+     "aoi": {
+      "default": false,
+      "description": "Show the area of interest",
+      "type": "boolean"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "hide": {
+      "items": {
+       "enum": [
+        "outlines",
+        "labels",
+        "grid",
+        "examples",
+        "aoi",
+        "wand"
+       ],
+       "type": "string"
+      },
+      "type": "array",
+      "description": "Layers to leave out"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "wand",
+   "title": "Magic wand",
+   "description": "The magic wand: outlines an object from a point or a box. Answers w<k> and a small picture; run(add=[\"w<k>\"]) uses it as an\n    example. A click takes a box of the run's typical object size; a box of your own fits objects unlike the rest.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "points": {
+      "items": {},
+      "type": "array",
+      "description": "Several objects at once, for examples: [x, y] on each, or [x0, y0, x1, y1] its box"
+     },
+     "include": {
+      "items": {},
+      "type": "array",
+      "description": "One object: [x, y] on it"
+     },
+     "exclude": {
+      "items": {},
+      "type": "array",
+      "description": "[x, y] not on it"
+     },
+     "box": {
+      "description": "[x0, y0, x1, y1] around it"
+     },
+     "w": {
+      "type": "string",
+      "description": "A selection to refine, such as w2"
+     },
+     "candidate": {
+      "type": "integer",
+      "description": "Another of its outlines (0-2)"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "run",
+   "title": "Run the model",
+   "description": "Changes the query (only what you give) and runs it, waiting up to ~40 s. Answers the count, score and side_px as [min, q1, median,\n    q3, max], curve ([thr, count]: what each threshold would keep), by_text, and an overview. If still running, call wait.\n    A run's record is its template of the catalog and values in ground units (sam3-objects: dst_res m, threshold,\n    mask_threshold; fewshot-regions: dst_res, threshold, min_size).",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "texts": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "description": "Replaces the texts: short plain noun phrases, one per text (\"tree\", \"car\"); by_text says what each found"
+     },
+     "add": {
+      "items": {},
+      "type": "array",
+      "description": "Examples to add: \"w3\" or \"r2.5\" (+), \"-r2.5\" (−), or {polygon: [[x, y], ...], sign} drawn where the wand fails; fewshot also takes clicks: {point: [x, y], sign: \"+\" or \"-\"}"
+     },
+     "remove": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "description": "Example ids to remove, or [\"all\"]"
+     },
+     "thr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "const": "default",
+        "type": "string"
+       }
+      ],
+      "description": "Score threshold 0..1"
+     },
+     "scale": {
+      "enum": [
+       0.25,
+       0.5,
+       1,
+       2,
+       4
+      ],
+      "description": "Resolution the model sees: 2 or 4 for small objects, 0.5 or 0.25 for large ones and regions"
+     },
+     "maskThr": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "const": "default",
+        "type": "string"
+       }
+      ],
+      "description": "Mask pixel threshold: lower when outlines stop short of the edges, higher when touching objects merge"
+     },
+     "restore": {
+      "maxLength": 8,
+      "type": "string",
+      "description": "First go back to the query of a run (r4); the other changes apply after it"
+     },
+     "note": {
+      "default": "",
+      "description": "A few words on why, for the user's log",
+      "maxLength": 300,
+      "type": "string"
+     },
+     "branch": {
+      "maxLength": 40,
+      "type": "string",
+      "description": "The line of work this run belongs to"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     },
+     "overview": {
+      "default": true,
+      "description": "Answer with a small overview of the run",
+      "type": "boolean"
+     },
+     "model": {
+      "maxLength": 32,
+      "type": "string",
+      "description": "The model whose query this is, from start-session's models; each keeps its own, and it stays in use"
+     },
+     "r": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "const": "default",
+        "type": "string"
+       }
+      ],
+      "description": "fewshot: a click's brush radius in cells (0..20; default 2)"
+     },
+     "minSize": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "const": "default",
+        "type": "string"
+       }
+      ],
+      "description": "fewshot: a region's least size in cells"
+     },
+     "refine": {
+      "type": "boolean",
+      "description": "fewshot: the wand's model redraws each region's outline"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html"
+   }
+  },
+  {
+   "name": "wait",
+   "title": "Wait for a run",
+   "description": "Waits for a running run, as run does.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "timeout": {
+      "default": 45,
+      "description": "Seconds, at most 45",
+      "maximum": 45,
+      "minimum": 0,
+      "type": "number"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "sheet",
+   "title": "Contact sheet",
+   "description": "A contact sheet of a run's objects: each crop with its outline, number and score.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "pick": {
+      "default": "random",
+      "description": "random (a precision check; finish needs one), borderline (around the threshold), top, bottom, largest, smallest, not_in (found here and not in other); boundary (points on the outlines' edges)",
+      "enum": [
+       "random",
+       "borderline",
+       "boundary",
+       "top",
+       "bottom",
+       "largest",
+       "smallest",
+       "not_in"
+      ],
+      "type": "string"
+     },
+     "n": {
+      "default": 24,
+      "maximum": 48,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "seed": {
+      "type": "integer"
+     },
+     "other": {
+      "maxLength": 8,
+      "type": "string",
+      "description": "not_in: the run to compare with"
+     },
+     "selection": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "Only this selection's objects (sel2)"
+     },
+     "at": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+      "description": "borderline: around this threshold rather than the run's, to see where to set it"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "audit",
+   "title": "Audit cells",
+   "description": "Random cells of the area at full resolution with the run's outlines, to find objects nobody outlined (finish needs it, or\n    reviewed cells instead).",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "cells": {
+      "default": 6,
+      "maximum": 9,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "seed": {
+      "type": "integer"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "audit-points",
+   "title": "Audit points",
+   "description": "The points audit, for regions (finish takes it for a fewshot run). Without labels: random points, half inside the run's mask\n      and half outside, as numbered crops with a crosshair, showing nothing of the run. With labels: pixel precision, recall and IoU.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "n": {
+      "default": 40,
+      "description": "Points to sample",
+      "maximum": 64,
+      "minimum": 2,
+      "type": "integer"
+     },
+     "seed": {
+      "type": "integer"
+     },
+     "labels": {
+      "additionalProperties": {
+       "enum": [
+        "in",
+        "out",
+        "unsure"
+       ],
+       "type": "string"
+      },
+      "type": "object",
+      "description": "Your label of each point by its number: {\"1\": \"in\", \"2\": \"out\"}; unsure leaves it out"
+     },
+     "audit": {
+      "maxLength": 8,
+      "type": "string",
+      "description": "With labels: the sample (pa2)"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "stats",
+   "title": "Run statistics",
+   "description": "A run's numbers: count, total and covered area, sizes, density.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "by": {
+      "items": {
+       "enum": [
+        "cells",
+        "area"
+       ],
+       "type": "string"
+      },
+      "type": "array",
+      "description": "Also per grid cell, or per size"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "filter",
+   "title": "Filter a run",
+   "description": "Keeps a finished run's objects that pass, as the run r<k>f; they keep their ids.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "minArea": {
+      "minimum": 0,
+      "type": "number",
+      "description": "In unit"
+     },
+     "maxArea": {
+      "minimum": 0,
+      "type": "number",
+      "description": "In unit"
+     },
+     "unit": {
+      "default": "px",
+      "enum": [
+       "px",
+       "m2"
+      ],
+      "type": "string"
+     },
+     "minScore": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+     },
+     "inAoi": {
+      "default": false,
+      "description": "Only objects centred in the area of interest",
+      "type": "boolean"
+     },
+     "minCompactness": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+      "description": "4πA/P²: 1 a disc, 0.79 a square; low for slivers and strings"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "finish",
+   "title": "Finish the session",
+   "description": "Ends the session on a run that was checked (a random sheet, and audit or reviewed cells), commits pending edits: the final\n    overview, the summary on the live page, export links.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "summary": {
+      "description": "The result: count or area, estimates, final query",
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "unverified": {
+      "default": false,
+      "description": "Finish unchecked: only for a quick count the user asked for",
+      "type": "boolean"
+     },
+     "save": {
+      "maxLength": 200,
+      "type": "string",
+      "description": "Save the run as a config under this name: its recipe, examples and settings, to run on other images and at scale"
+     }
+    },
+    "required": [
+     "sid",
+     "summary"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   },
+   "_meta": {
+    "ui": {
+     "resourceUri": "ui://mapflow-interactive/session.html"
+    },
+    "ui/resourceUri": "ui://mapflow-interactive/session.html",
+    "openai/outputTemplate": "ui://mapflow-interactive/session.html"
+   }
+  },
+  {
+   "name": "export",
+   "title": "Export a run",
+   "description": "A download link for a run's results.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "format": {
+      "default": "geojson",
+      "description": "geojson (EPSG:4326), pixel (GeoJSON in image px), mask (PNG of instance numbers), mask_binary, csv",
+      "enum": [
+       "geojson",
+       "pixel",
+       "mask",
+       "mask_binary",
+       "csv"
+      ],
+      "type": "string"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "import-layer",
+   "title": "Import a layer",
+   "description": "A layer of polygons as a run to polish: GeoJSON, a GeoPackage or a zipped Shapefile, in any CRS, from a link or\n    its bytes, or a finished Mapflow processing's result by its id; each object keeps its class and score where it\n    has them. Answers the run as run does.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "url": {
+      "maxLength": 4096,
+      "type": "string",
+      "description": "A link to the file"
+     },
+     "content": {
+      "type": "string",
+      "description": "The file's bytes in base64"
+     },
+     "name": {
+      "maxLength": 255,
+      "type": "string",
+      "description": "The file's name, such as crowns.gpkg"
+     },
+     "label": {
+      "maxLength": 60,
+      "type": "string",
+      "description": "The class of every object, if the file has none"
+     },
+     "note": {
+      "default": "",
+      "maxLength": 300,
+      "type": "string"
+     },
+     "file": {
+      "description": "A file the user attached to the chat (ChatGPT passes it)",
+      "properties": {
+       "download_url": {
+        "type": "string"
+       },
+       "file_id": {
+        "type": "string"
+       },
+       "mime_type": {
+        "type": "string"
+       },
+       "file_name": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "download_url",
+       "file_id"
+      ],
+      "type": "object"
+     },
+     "processing": {
+      "maxLength": 64,
+      "type": "string",
+      "description": "A finished Mapflow processing's id: its result, read as the user, in place of a file"
+     },
+     "classes": {
+      "items": {
+       "maxLength": 60,
+       "type": "string"
+      },
+      "maxItems": 20,
+      "type": "array",
+      "description": "Only the objects of these classes (the layer's labels)"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": true
+   },
+   "_meta": {
+    "openai/fileParams": [
+     "file"
+    ]
+   }
+  },
+  {
+   "name": "save-layer",
+   "title": "Save a run to the project",
+   "description": "Saves a run to the user's project as a new layer (its objects as the GeoJSON export has them); the import takes\n    a few seconds: with workflow, a save's state.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "name": {
+      "maxLength": 200,
+      "type": "string",
+      "description": "The layer's name in the project"
+     },
+     "workflow": {
+      "type": "integer",
+      "description": "A save's workflow id: its state now"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "publish",
+   "title": "Publish a config",
+   "description": "Makes a saved config's workflow definition and registers it: on Mapflow, one of the user's own models there\n    (published again: a new version of it), to run as a processing over any of their imagery; on a test bed, with\n    its workflow-engine, to run at scale.",
+   "inputSchema": {
+    "properties": {
+     "config": {
+      "description": "A saved config's name or id (finish(save=...) makes one; list-sessions names them)",
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "config"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "run-at-scale",
+   "title": "Run at scale",
+   "description": "Runs a published config over a whole image on the workflow-engine, in partitions under one processing whose\n    layers merge into one. It takes minutes: call again without image for its state, and the merged layer's count\n    once it is ok.",
+   "inputSchema": {
+    "properties": {
+     "config": {
+      "description": "A saved config's name or id (finish(save=...) makes one; list-sessions names them)",
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "image": {
+      "maxLength": 200,
+      "type": "string",
+      "description": "An image to run the published config over, whole; without it, the state of its last run at scale"
+     },
+     "run": {
+      "maxLength": 40,
+      "type": "string",
+      "description": "One run at scale by its id"
+     }
+    },
+    "required": [
+     "config"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "select",
+   "title": "Select objects",
+   "description": "Selects a run's objects that meet every condition, as QGIS does by expression and location: answers sel<k>, its count and ids.\n    sheet(selection) shows them; edit(delete=[\"sel2\"]) deletes them.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "region": {
+      "description": "Objects centred in this: [x0, y0, x1, y1] or cells"
+     },
+     "polygon": {
+      "description": "Objects centred in this: [[x, y], ...]"
+     },
+     "minArea": {
+      "minimum": 0,
+      "type": "number",
+      "description": "In unit"
+     },
+     "maxArea": {
+      "minimum": 0,
+      "type": "number",
+      "description": "In unit"
+     },
+     "unit": {
+      "default": "px",
+      "enum": [
+       "px",
+       "m2"
+      ],
+      "type": "string"
+     },
+     "minScore": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+     },
+     "maxScore": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+     },
+     "minCompactness": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+      "description": "4πA/P²: 1 a disc, 0.79 a square; low for slivers and strings"
+     },
+     "maxCompactness": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+     },
+     "label": {
+      "maxLength": 60,
+      "type": "string"
+     },
+     "made": {
+      "enum": [
+       "hand",
+       "model"
+      ],
+      "type": "string",
+      "description": "hand: made by edits"
+     },
+     "other": {
+      "maxLength": 8,
+      "type": "string",
+      "description": "Another run, with how"
+     },
+     "how": {
+      "enum": [
+       "matched",
+       "unmatched",
+       "inside",
+       "outside",
+       "intersects",
+       "near"
+      ],
+      "type": "string",
+      "description": "With other: matched (IoU ≥ iou), unmatched, inside (centred on one of its objects), outside (not), intersects, near"
+     },
+     "distance": {
+      "minimum": 0,
+      "type": "number",
+      "description": "near: image px"
+     },
+     "iou": {
+      "default": 0.5,
+      "maximum": 1,
+      "minimum": 0.05,
+      "type": "number"
+     },
+     "mode": {
+      "default": "new",
+      "description": "With selection",
+      "enum": [
+       "new",
+       "add",
+       "remove",
+       "intersect"
+      ],
+      "type": "string"
+     },
+     "selection": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "With mode: such as sel2"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "edit",
+   "title": "Edit objects",
+   "description": "All your edits to a run at once, as a reviewer makes them: numbers as the picture shows them (or ids). They stay pending until\n    changes(commit) or finish. What can't be done is reported and the rest is done. What the wand adds comes back on a small sheet;\n    odd names any far from the median size.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "delete": {
+      "items": {},
+      "type": "array",
+      "description": "False objects: [12, 15, \"sel2\"]"
+     },
+     "add": {
+      "items": {},
+      "type": "array",
+      "description": "Objects without an outline of their own, one item each: [x, y] on it (the wand outlines it; two or more points inside one outline cut it there), [x, y, side] with its size in the picture's px, [x0, y0, x1, y1] its box, or \"w3\""
+     },
+     "merge": {
+      "items": {},
+      "type": "array",
+      "description": "Pieces of one object: [[3, 4], [7, 8, 9]]"
+     },
+     "split": {
+      "items": {},
+      "type": "array",
+      "description": "An outline over several objects: 12 cuts it at its necks; {id: 12, line: [[x, y], ...]} along a line, smooth through 3 or more points; {id, seeds: [[x, y], ...]} one in each part, cut along the edges between them; {id, parts: 3} blind, into equal areas"
+     },
+     "reshape": {
+      "items": {},
+      "type": "array",
+      "description": "An outline again: {id, include: [[x, y]], exclude: [[x, y]], box} by the wand, or {id, points: [[x, y], ...]}"
+     },
+     "copy": {
+      "items": {},
+      "type": "array",
+      "description": "Another run's objects: [\"r5.12\", \"sel3\"]"
+     },
+     "draw": {
+      "items": {},
+      "type": "array",
+      "description": "Only where the wand fails: [[x, y], ...], or {points, smooth: true} for 6-16 control points"
+     },
+     "label": {
+      "additionalProperties": true,
+      "type": "object",
+      "description": "{ids: [...], to: \"car\"}"
+     },
+     "run": {
+      "maxLength": 8,
+      "type": "string",
+      "description": "The run to edit; default: the pending edits, else the last"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     },
+     "show": {
+      "default": false,
+      "description": "Also picture merges and splits",
+      "type": "boolean"
+     },
+     "note": {
+      "default": "",
+      "description": "A few words on why",
+      "maxLength": 200,
+      "type": "string"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "changes",
+   "title": "Pending edits",
+   "description": "The pending edits. Model runs, filter, transform, combine and finish commit them by themselves.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "action": {
+      "default": "show",
+      "description": "undo takes back the last n edit calls",
+      "enum": [
+       "show",
+       "undo",
+       "commit",
+       "discard"
+      ],
+      "type": "string"
+     },
+     "n": {
+      "default": 1,
+      "maximum": 50,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "note": {
+      "default": "",
+      "description": "commit: a few words",
+      "maxLength": 300,
+      "type": "string"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "transform",
+   "title": "Transform a run",
+   "description": "All of a run's objects through one post-processing step, as a new run: unchanged objects keep their ids.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "op": {
+      "description": "split_necks (cut two-lobed outlines at their necks; round objects only, as it ruins long ones), opening (remove spurs), closing (fill notches), buffer, fill_holes (up to maxArea), simplify, smooth, rectangles (buildings), convex_hull, remove_overlaps, merge_slivers (up to maxArea), dissolve (touching objects as one: regions)",
+      "enum": [
+       "buffer",
+       "opening",
+       "closing",
+       "fill_holes",
+       "simplify",
+       "smooth",
+       "rectangles",
+       "convex_hull",
+       "remove_overlaps",
+       "merge_slivers",
+       "dissolve",
+       "split_necks"
+      ],
+      "type": "string"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "selection": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "Only this selection's objects"
+     },
+     "distance": {
+      "maximum": 500,
+      "minimum": -500,
+      "type": "number",
+      "description": "In unit"
+     },
+     "unit": {
+      "default": "px",
+      "description": "Lengths in image px or m (areas: px², m²)",
+      "enum": [
+       "px",
+       "m"
+      ],
+      "type": "string"
+     },
+     "maxArea": {
+      "minimum": 0,
+      "type": "number",
+      "description": "In unit²"
+     },
+     "tolerance": {
+      "exclusiveMinimum": 0,
+      "maximum": 100,
+      "type": "number",
+      "description": "simplify: image px"
+     },
+     "iterations": {
+      "default": 2,
+      "description": "smooth",
+      "maximum": 5,
+      "minimum": 1,
+      "type": "integer"
+     },
+     "minIou": {
+      "default": 0.8,
+      "description": "rectangles",
+      "maximum": 1,
+      "minimum": 0.3,
+      "type": "number"
+     },
+     "note": {
+      "default": "",
+      "maxLength": 200,
+      "type": "string"
+     }
+    },
+    "required": [
+     "sid",
+     "op"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "combine",
+   "title": "Combine runs",
+   "description": "Combines finished runs into a new run; their objects keep their ids.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "runs": {
+      "description": "Runs, the first leading",
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 8,
+      "minItems": 2,
+      "type": "array"
+     },
+     "mode": {
+      "description": "fill (the first, plus the others' objects it lacks), intersect (the first's that every other has), vote (those k of the runs have), replace (the second's in place of the first's within region or polygon), subtract (regions only), seed (the first, plus the wand's outlines of what the second's regions add to it, as a selection to judge)",
+      "enum": [
+       "fill",
+       "intersect",
+       "vote",
+       "replace",
+       "subtract",
+       "seed"
+      ],
+      "type": "string"
+     },
+     "iou": {
+      "default": 0.5,
+      "description": "How much two outlines overlap to be one object",
+      "maximum": 0.95,
+      "minimum": 0.1,
+      "type": "number"
+     },
+     "k": {
+      "maximum": 8,
+      "minimum": 2,
+      "type": "integer",
+      "description": "vote: how many runs"
+     },
+     "region": {
+      "description": "replace: [x0, y0, x1, y1] or cells"
+     },
+     "polygon": {
+      "description": "replace: [[x, y], ...]"
+     },
+     "note": {
+      "default": "",
+      "maxLength": 200,
+      "type": "string"
+     },
+     "preview": {
+      "maxLength": 12,
+      "type": "string",
+      "description": "The picture the numbers are in, such as p4; default: the last; \"image\": image pixels"
+     },
+     "cover": {
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "type": "number",
+      "description": "fill: also leave out what the first's objects already cover this share of, as a fewshot region over several objects (0.3)"
+     },
+     "minScore": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number",
+      "description": "seed: the wand's own score an addition needs (0.75)"
+     }
+    },
+    "required": [
+     "sid",
+     "runs",
+     "mode"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  },
+  {
+   "name": "review",
+   "title": "Review a run",
+   "description": "The polish: applies fix to what was last shown and answers the next part, so one call a part. Its progress is kept here; reviewed cells count as audit\n    cells.",
+   "inputSchema": {
+    "properties": {
+     "sid": {
+      "description": "The session's handle from start-session, such as s4: this server's own name for the session, not a credential",
+      "maxLength": 40,
+      "type": "string"
+     },
+     "fix": {
+      "additionalProperties": true,
+      "type": "object",
+      "description": "The edits for the part last shown, as edit takes them: {delete, add, split, merge, ...}; points in that picture"
+     },
+     "run": {
+      "type": "string",
+      "description": "A run such as r3; default: the pending edits, else the last run"
+     },
+     "by": {
+      "enum": [
+       "large",
+       "cells",
+       "disagreements"
+      ],
+      "type": "string",
+      "description": "large: the largest outlines, 20 on a picture; cells: the area cell by cell; disagreements: the objects this run and other don't share. Default: go on with the review under way, else cells"
+     },
+     "other": {
+      "maxLength": 8,
+      "type": "string",
+      "description": "disagreements: the other run"
+     },
+     "cell": {
+      "maximum": 8192,
+      "minimum": 32,
+      "type": "integer",
+      "description": "Image px a cell covers; default: as keeps objects legible"
+     },
+     "restart": {
+      "default": false,
+      "description": "Start over",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "sid"
+    ],
+    "type": "object"
+   },
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+   }
+  }
+ ],
+ "prompts": [
+  {
+   "name": "find-objects",
+   "title": "Find objects on an image",
+   "description": "The workflow for finding and outlining objects with these tools.",
+   "arguments": [
+    {
+     "name": "task",
+     "description": "What to find, if you know already",
+     "required": false
+    }
+   ],
+   "text": "You find and outline objects on an aerial or satellite image with SAM3 and Fewshots, through Mapflow interactive's tools, the way its users work on its session page. It is for custom objects: the kinds the user's existing models and configs on Mapflow don't cover; a kind one of them is made for runs as a processing of that model instead. Work in one session (start-session; its id is a short handle such as s4) and give the user the live page link from it: they can watch every run there and open it on the session page.\n\n1. Intake. The images are sessions: one of the user's MyImagery mosaics cut to an area of interest.\n   - A file the user has (they attached a GeoTIFF to the chat, or name one on their computer): upload-image puts it into their MyImagery as a new mosaic named after it. ChatGPT passes the attachment as file. Elsewhere pass fileName and fileSize, and sha1 if you can compute it (a file already in MyImagery isn't sent again), then follow the answer's next: send the file with its send command from your code sandbox (claude.ai: /mnt/user-data/uploads/...; it reaches the service only if the user allowed its host, so if the command fails, don't retry it: the user drops the same file on the card in the chat) or from the user's computer (Claude Code, Codex). image-status(upload=...) until it is ready: MyImagery checks the file and makes its map layer, a minute or more for a large one. MyImagery takes only georeferenced GeoTIFFs, and the service files up to the answer's limits.max_file: a larger one the user uploads on Mapflow's My data page (the answer's my_data), and you take its mosaic from list-images.\n   - An image already in MyImagery: list-images lists the user's mosaics, newest first, each with its images (file name, state, size, ground pixel size; list-images(mosaic) names more of one), and shows the user all of them on its card, each image's preview under its mosaic: to show the user their images, call it, rather than showing pictures of them one by one. list-sessions lists the sessions already made (a mosaic cut to an area), newest first: use one the user names as it is.\n   - The area: a mosaic or an image the user clicks on list-images' card opens its map there, and select-area(mosaic) shows a mosaic they name on a card in the chat (claude.ai, ChatGPT): the whole mosaic or image is marked when it fits one session, else they draw the area; the card checks it. Its “Use this area” sends a message with the mosaic and the area as [west, south, east, north]: pass them to add-image as they are. Without a card (other clients, or the user sees none): view-mosaic(mosaic) shows the map with its images' outlines and labelled cells (region=[west, south, east, north] zooms in); agree the area with the user as cells of that picture (\"B2:D4\", with the same region) or in degrees, and view-mosaic(mosaic, aoi=...) checks it: the session's size, ground pixel size and tiles per scale (a prompt runs only at a scale within max_tiles).\n   - add-image(mosaic, aoi, title) makes the session; it counts towards the user's sessions of the day. Wait until image-status says it is ready. Then view the whole image.\n\n2. Intent. Write your interpretation for the user, briefly:\n   - what counts, with the edge cases (\"short dead trees count, shrubs don't\");\n   - the area of interest (a part of the image, or all of it);\n   - whether these are objects (cars, trees, buildings) or regions (water, fields, forest), and the size of one in pixels;\n   - when to stop (e.g. \"precision and recall both look ≥ 90%\").\n   Then stop and wait for the user's answer. Call set-intent only once they have corrected or OK'd it (with the area of interest, which you can give as cells of a preview's grid). Go on without an answer only if the user said up front that you should, or that they can't answer; then say what you assumed.\n\n3. The phrase and the scale, cheaply: these and the threshold move the score far more than anything after them. run(texts=[\"tree\", \"forest\"], note=\"...\"): plain nouns of one or two words, several at once if unsure, one per text. by_text says what each finds, and the model ignores what it doesn't know (\"tree crown\" finds nothing where \"tree\" finds hundreds). Small words matter too: \"solar panels\" scored 0.58 where \"solar panel\" scored 0.19, \"vehicle\" 0.86 where \"car\" scored 0.80, so try the plural and a more general word. Then the scale: the model does best where the typical object is 50 to 100 px across at the scale, so ×4 for objects of about 20 px in the image, ×2 for 25 to 50, ×1 for 50 and over. side_px gives the size, and scale_hint says when a run is off. On the benches this rule lost at most 0.04 of F1 against the best scale; always ×2 lost up to 0.28, and on objects of 20 px ×4 gave 0.78 where ×2 gave 0.51, with no other help. Too fine merges them: 0.80 fell to 0.44 at ×4 on objects of 50 px. Regions (water, fields, forest), ÷2 or ÷4. Each run answers curve (what each threshold would keep) and a small overview.\n\n4. The threshold. It can go either way from 0.5, 0.15 to 0.8 on the benches, and often should go up: where a random sheet shows false ones, raise it (vehicles 0.67 at 0.5, 0.86 at 0.8; solar panels 0.49 at 0.5, 0.58 at 0.7), and where many are missed lower it (dense small trees 0.61 at 0.5, 0.78 at 0.25). sheet(pick=\"borderline\", at=0.4) shows the objects around a threshold with no run for it, curve how many it would keep; set thr where they turn from right to wrong. One or two sheets are enough: what is left costs one delete later.\n\n5. Examples, only when a kind is missed or a dense scene gives few objects: they can do far more than any threshold there, and elsewhere often make things worse, so skip them if the text does well. wand(points=[[x, y], ...]) on 2 or 3 objects that look different, then run(add=[\"w1\", \"w2\"]); compare with the run before on a random sheet, and go back with run(restore=\"r4\") if it is no better. Negatives (\"-r2.7\") can suppress real objects too: delete in the polish rather. Stop at the second run that doesn't clearly help: what is left is cheaper to fix by hand. Other things that may help, one call each: combine(mode=\"fill\") when two runs find different objects; a slightly lower maskThr when outlines stop short of the edges; filter by size or compactness only for a clear kind of junk, as it took real objects with it on the benches. Only where the wand fails, draw: edit(draw=[{\"points\": [[x, y], ...], \"smooth\": true}]).\n\n6. Fewshots, only if, at the right scale, many outlines are still false or many objects have no outline. Fewshots classifies the image's pixels from your + and − examples, no text. Its regions merge touching objects, and its mask can look blotchy or lie over a whole forest: judge what comes of it, not its look. run(model=\"fewshot\", add=[...]): + on objects, − on what surrounds them and what looks like them; its first answer has its steps. Then, one call and one sheet each:\n   - Many false outlines: select(run=\"r3\", other=\"r9\", how=\"outside\") and a sheet of those; delete them if they are wrong. With clicks well placed it raised F1 from 0.80 to 0.97 and from 0.83 to 0.87, and it cost real objects where the mask covered little.\n   - Objects with no outline: combine(runs=[\"r3\", \"r9\"], mode=\"seed\") adds the wand's outlines of what the mask adds, as a selection; judge one sheet of it, and edit(delete=[\"sel4\"]) if mostly wrong. It gains little once the scale is right (0.78 to 0.80).\nRegions and textures (water, fields, forest, roads, bare soil) take Fewshots on its own. run(model=\"sam3\") goes back to SAM3.\n\n7. The polish, on the round you chose (say which and why: the polish starts from it, and its config, finish(save=...), keeps the steps up to it, not the edits after it); from here these are the steps of the prompt polish-results, kept short: in real sessions on the benches it moved F1 by -0.07 to +0.05, and lost when it cut what was one object.\n   - First the merged outlines: review(by=\"large\") shows the largest, 20 on a picture, close up, two pictures in all. A quarter to a half of them hold two or more objects. Cut those you can see are several: a waist, lobes, several tops; a needless cut costs about as much as a missed one. For each, review(fix={add: [[x, y], [x, y]]}) with one point on each object in it, in that picture's pixels: it cuts there, along the edges between them, and shows the next. A point on each scored up to 0.16 higher on the benches than saying only how many ({split: [{id: \"r3.12\", parts: 2}]}), so that is for when you can't tell where. Delete what is no object in the same fix ({delete: [\"r3.12\"]}). Go on until it says done.\n   - Then what is missing. Where objects are few and far between (under about 100 on a large image), don't walk the image: what is missed is mostly just under the threshold, so sheet(pick=\"borderline\", at=<lower>), then edit(copy=[\"r3.b4\", ...]) the real ones; and look at all of them on sheets (pick=\"top\", then \"bottom\") to delete false ones. Where they are many and the overview or an audit shows some with no outline, review(by=\"cells\") goes over the area, one call a cell: review(fix={delete: [12, 15], add: [[x, y], ...], merge: [[4, 5]]}), until it says it is done; a point on an object without its own outline is about 15 tokens and almost always takes the right object. A cell where you see nothing to do takes review(). Numbers are those on the picture; points are its pixels.\n   - Don't stop to look at each edit: the answer names what is odd, and you can fix that in the next call. Zoom (view with a region) only where you are in real doubt, at most a few times: each picture stays in the conversation for the rest of the session.\n\n8. Check once, at the end, before you report any number. Precision: sheet(pick=\"random\"); an outline is right only when it covers one whole object. Misses: the cells you reviewed count, else audit with 6 cells: every object without an outline of its own is one. Report both as estimates with their sample sizes. Don't check again after small edits: the checks hold for them. finish refuses a run nobody checked unless you pass unverified=true, which is only for a quick count the user asked for.\n\n9. Finish. Give the count or area, the estimates and the final query, and call finish with a short summary; it commits the edits and gives the export links. Offer to save the run as a config (finish with save=\"a name\"): its query, settings, resolution and steps, to run on other images (start-session with copyQuery={\"session\": \"s4\"} or {\"config\": \"a name\"}).\n\n10. Into the project, when the user wants the result there: save-layer(sid, name=\"a name\") saves the finished run (any other with run=\"r4\") as a new layer of their project; save-layer(workflow=<its id>) gives the import's state until it is OK.\n\n11. Over more imagery, when the user wants these objects beyond this session's area: publish(config=\"a name\") makes the saved config one of their models on Mapflow, to run over any of their imagery as their other models do; its answer says what comes next. Its result can be polished in turn, as any layer (the prompt polish-results).\n\nBe brief between calls, a line at most: what you write and every picture stay in the conversation, and a long one can run out of room. Coordinates: bare numbers are in the pixels of the last picture with pixels (name another with preview=\"p4\", or \"image\"); grid cells work too (\"B2\", \"B2:C3\"). Budget: when a result carries \"budget\", tell the user where you are and ask whether to go on. Corrections: when a result carries user_marks, act on them first; its note says how."
+  },
+  {
+   "name": "polish-results",
+   "title": "Polish a layer of objects",
+   "description": "The workflow for polishing a layer, a model's round or a file's: the review queue, edits in batches, the audit,\n    finish, and the project.",
+   "arguments": [
+    {
+     "name": "task",
+     "description": "The image, the layer (a run or a file) and what counts, if you know already",
+     "required": false
+    }
+   ],
+   "text": "You polish a layer of objects on an aerial or satellite image through Mapflow interactive's tools, the way a reviewer works: the shapes are given, and you fix what is wrong with them. The polish cuts outlines that hold several objects, outlines objects that were missed, deletes what is no object and redraws what is wrong, then checks the result with estimates of its precision and recall. It serves any layer of objects worth fixing by hand: a session's round, the result of a processing on the user's imagery (one of their Mapflow models, or a config they published), or a file of objects. Work in one session (start-session; its id is a short handle such as s4) and give the user the live page link from it.\n\n1. The image and the layer. The image as find-objects' intake brings it in, then start-session on it. A processing's result (on the user's MyImagery): add-image(processing=<its id>) makes the session over its mosaic and area (one larger than a session takes: the user picks a part, and add-image(processing=..., aoi=[west, south, east, north]) takes it), then import-layer(sid, processing=<its id>) brings its objects in; classes=[\"...\"] keeps those of a result that holds several (its first answer names them). The layer is a run of the session (the round find-objects ended at), or a file: import-layer(sid, url=\"https://...\") for a link, or import-layer(sid, content=<the file's bytes in base64>, name=\"crowns.gpkg\"); GeoJSON, a GeoPackage or a zipped Shapefile, in any CRS. It comes in as a run with the file's class and score where it has them, and every tool takes it. A layer without scores has no threshold and no borderline, top or bottom sheets: skip what needs them. The wand works anywhere on the image: its tiles are encoded when the review reaches them. View the layer.\n\n2. Intent. Write your interpretation for the user, briefly:\n   - what counts, with the edge cases (\"short dead trees count, shrubs don't\");\n   - the area of interest (a part of the image, or all of it);\n   - whether these are objects (cars, trees, buildings) or regions (water, fields, forest), and the size of one in pixels;\n   - when to stop (e.g. \"precision and recall both look ≥ 90%\").\n   Then stop and wait for the user's answer. Call set-intent only once they have corrected or OK'd it (with the area of interest, which you can give as cells of a preview's grid). Go on without an answer only if the user said up front that you should, or that they can't answer; then say what you assumed.\n\n3. The polish, kept short: in real sessions on the benches it moved F1 by -0.07 to +0.05, and lost when it cut what was one object.\n   - First the merged outlines: review(by=\"large\") shows the largest, 20 on a picture, close up, two pictures in all. A quarter to a half of them hold two or more objects. Cut those you can see are several: a waist, lobes, several tops; a needless cut costs about as much as a missed one. For each, review(fix={add: [[x, y], [x, y]]}) with one point on each object in it, in that picture's pixels: it cuts there, along the edges between them, and shows the next. A point on each scored up to 0.16 higher on the benches than saying only how many ({split: [{id: \"r3.12\", parts: 2}]}), so that is for when you can't tell where. Delete what is no object in the same fix ({delete: [\"r3.12\"]}). Go on until it says done.\n   - Then what is missing. Where objects are few and far between (under about 100 on a large image), don't walk the image: what is missed is mostly just under the threshold, so sheet(pick=\"borderline\", at=<lower>), then edit(copy=[\"r3.b4\", ...]) the real ones; and look at all of them on sheets (pick=\"top\", then \"bottom\") to delete false ones. Where they are many and the overview or an audit shows some with no outline, review(by=\"cells\") goes over the area, one call a cell: review(fix={delete: [12, 15], add: [[x, y], ...], merge: [[4, 5]]}), until it says it is done; a point on an object without its own outline is about 15 tokens and almost always takes the right object. A cell where you see nothing to do takes review(). Numbers are those on the picture; points are its pixels.\n   - Don't stop to look at each edit: the answer names what is odd, and you can fix that in the next call. Zoom (view with a region) only where you are in real doubt, at most a few times: each picture stays in the conversation for the rest of the session.\n\n4. Check once, at the end, before you report any number. Precision: sheet(pick=\"random\"); an outline is right only when it covers one whole object. Misses: the cells you reviewed count, else audit with 6 cells: every object without an outline of its own is one. Report both as estimates with their sample sizes. Don't check again after small edits: the checks hold for them. finish refuses a run nobody checked unless you pass unverified=true, which is only for a quick count the user asked for.\n\n5. Finish. Give the count or area, the estimates and the final query, and call finish with a short summary; it commits the edits and gives the export links. Offer to save the run as a config (finish with save=\"a name\"): its query, settings, resolution and steps, to run on other images (start-session with copyQuery={\"session\": \"s4\"} or {\"config\": \"a name\"}).\n\n6. Into the project, when the user wants the result there: save-layer(sid, name=\"a name\") saves the finished run (any other with run=\"r4\") as a new layer of their project; save-layer(workflow=<its id>) gives the import's state until it is OK.\n\nBe brief between calls, a line at most: what you write and every picture stay in the conversation, and a long one can run out of room. Coordinates: bare numbers are in the pixels of the last picture with pixels (name another with preview=\"p4\", or \"image\"); grid cells work too (\"B2\", \"B2:C3\"). Budget: when a result carries \"budget\", tell the user where you are and ask whether to go on. Corrections: when a result carries user_marks, act on them first; its note says how."
+  }
+ ]
+}
