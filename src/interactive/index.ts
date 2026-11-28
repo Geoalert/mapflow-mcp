@@ -88,6 +88,7 @@ export function addInteractive(
 	server: McpServer & { toolNames: Set<string> },
 	config: InteractiveConfig,
 	credentials: (extra: Extra) => ApiCredentials | undefined,
+	uploadStatus: (token: string, extra: Extra) => Promise<CallToolResult>,
 ) {
 	for (const tool of interactiveTools(config.fewshot)) {
 		if (server.toolNames.has(tool.name))
@@ -109,12 +110,15 @@ export function addInteractive(
 					return toolError("AUTH_REQUIRED", "Mapflow token is required");
 				// image-status of an upload is the upload's own route, which takes nothing else.
 				const upload =
-					tool.name === "image-status"
+					tool.name === "image-status" || tool.name === "upload-refresh"
 						? (args as { upload?: unknown }).upload
 						: undefined;
-				const [route, sent] = upload
-					? [ROUTES["upload-status"], { upload }]
-					: [tool.route, args as Record<string, unknown>];
+				if (typeof upload === "string" && upload.startsWith("mf-"))
+					return uploadStatus(upload, extra);
+				const [route, sent] =
+					upload && tool.name === "image-status"
+						? [ROUTES["upload-status"], { upload }]
+						: [tool.route, args as Record<string, unknown>];
 				try {
 					return render(await callApp(config, route, sent, given, extra));
 				} catch (error) {

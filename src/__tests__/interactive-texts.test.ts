@@ -172,10 +172,13 @@ for (const variant of ["sam3", "fewshot"] as const) {
 		const expected = new Map<string, Json>(
 			platform.tools.map((t) => [t.name as string, t]),
 		);
-		for (const name of ["upload-image", "upload-refresh"]) {
-			const t = own.tools.find((x) => x.name === name) as Json;
-			expected.set(name, { ...t, title: `Interactive: ${t.title}` });
-		}
+		const refresh = own.tools.find(
+			(tool) => tool.name === "upload-refresh",
+		) as Json;
+		expected.set("upload-refresh", {
+			...refresh,
+			title: `Interactive: ${refresh.title}`,
+		});
 		const status = expected.get("image-status") as Json;
 		const ownStatus = own.tools.find((x) => x.name === "image-status") as Json;
 		const statusSchema = status.inputSchema as Json;

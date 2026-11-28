@@ -161,15 +161,23 @@ test("discovery publishes numeric coordinate arrays while runtime rejects invali
 	}
 	expect(requests).toHaveLength(0);
 });
-test("tools/list exposes 21 tools with accurate write annotations", async () => {
+test("tools/list exposes base tools with accurate write annotations", async () => {
 	const { tools } = await client.listTools();
 	expect(tools.map((t) => t.name).sort()).toEqual(
-		[...calls.map((c) => c[0]), "update-project", "delete-project"].sort(),
+		[
+			...calls.map((c) => c[0]),
+			"update-project",
+			"delete-project",
+			"upload-image",
+			"upload-refresh",
+			"image-status",
+		].sort(),
 	);
 	for (const t of tools) {
 		expect(t.outputSchema?.type).toBe("object");
 		expect(t.title).toBeTruthy();
 		const write = [
+			"upload-image",
 			"start-processing",
 			"create-project",
 			"update-project",
@@ -177,7 +185,7 @@ test("tools/list exposes 21 tools with accurate write annotations", async () => 
 		].includes(t.name);
 		expect(t.annotations?.readOnlyHint).toBe(!write);
 		expect(t.annotations?.idempotentHint).toBe(
-			!["start-processing", "create-project"].includes(t.name),
+			!["upload-image", "start-processing", "create-project"].includes(t.name),
 		);
 		expect(t.annotations?.destructiveHint).toBe(
 			["start-processing", "update-project", "delete-project"].includes(t.name),

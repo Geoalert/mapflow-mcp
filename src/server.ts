@@ -1,6 +1,7 @@
 import { readInteractiveConfig } from "./interactive/index.js";
 import { logEvent } from "./logging.js";
 import { createServer } from "./mcp-server.js";
+import { MAX_FILE_BYTES } from "./upload/store.js";
 import { createWebLinks } from "./web-links.js";
 
 const transportMode = process.env.MAPFLOW_TRANSPORT ?? "stdio";
@@ -17,7 +18,16 @@ try {
 		if (config && !process.env.MAPFLOW_BASE_URL)
 			throw new Error("MAPFLOW_BASE_URL is required with OAuth");
 		const port = Number(process.env.PORT) || 3000;
-		Bun.serve({ port, fetch: createHttpHandler(config, interactive) });
+		const handle = createHttpHandler(config, interactive);
+		Bun.serve({
+			port,
+			maxRequestBodySize: MAX_FILE_BYTES,
+			fetch: (req, server) => {
+				if (new URL(req.url).pathname.startsWith("/agent/upload/"))
+					server.timeout(req, 255);
+				return handle(req);
+			},
+		});
 		logEvent("server.started", { outcome: "success", transport: "http" });
 	} else {
 		const { StdioServerTransport } = await import(

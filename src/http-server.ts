@@ -14,15 +14,47 @@ import { createServer } from "./mcp-server.js";
 import { createNominatimClient } from "./nominatim-client.js";
 import { createOAuth, type OAuthConfig, OAuthError } from "./oauth.js";
 
+import { uploadService } from "./upload/http.js";
+
+// Only the binary upload route needs more than Bun’s normal HTTP body limit.
+const MAX_RPC_BYTES = 128 * 1024 * 1024;
+function limitRpcBody(req: Request) {
+	if (!req.body) return req;
+	const length = req.headers.get("content-length");
+	if (length !== null)
+		return Number(length) > MAX_RPC_BYTES
+			? new Response("Request body too large", { status: 413 })
+			: req;
+	let received = 0;
+	const body = req.body.pipeThrough(
+		new TransformStream<Uint8Array, Uint8Array>({
+			transform(chunk, controller) {
+				received += chunk.byteLength;
+				if (received > MAX_RPC_BYTES)
+					controller.error(new Error("Request body too large"));
+				else controller.enqueue(chunk);
+			},
+		}),
+	);
+	return new Request(req, { body });
+}
+
 export function createHttpHandler(
 	config?: OAuthConfig,
 	interactive?: InteractiveConfig,
 ) {
+	const uploadOrigin = new URL(
+		Bun.env.MAPFLOW_MCP_PUBLIC_URL ??
+			config?.resource ??
+			`http://127.0.0.1:${Bun.env.PORT ?? 3000}`,
+	).origin;
+	const uploads = uploadService(() => uploadOrigin);
 	const geometryCache = new GeometryCache();
 	const oauth = config ? createOAuth(config) : undefined;
 	const nominatim = createNominatimClient();
 	const handle = async (req: Request): Promise<Response> => {
 		const url = new URL(req.url);
+		if (url.pathname.startsWith("/agent/upload/")) return uploads.handle(req);
 		const origin = req.headers.get("origin");
 		if (
 			origin &&
@@ -75,8 +107,9 @@ export function createHttpHandler(
 						nominatim,
 						interactive,
 						credentials: exchanged,
+						uploads,
 					}
-				: { nominatim, geometryCache, interactive },
+				: { nominatim, geometryCache, interactive, uploads },
 		);
 		const transport = new WebStandardStreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
@@ -87,7 +120,9 @@ export function createHttpHandler(
 			const token = /^Bearer ([^\s]+)$/i.exec(
 				req.headers.get("authorization") ?? "",
 			)?.[1];
-			return await transport.handleRequest(req, {
+			const rpc = limitRpcBody(req);
+			if (rpc instanceof Response) return rpc;
+			return await transport.handleRequest(rpc, {
 				authInfo:
 					!isOAuth && token
 						? { token, clientId: "legacy-token", scopes: [] }

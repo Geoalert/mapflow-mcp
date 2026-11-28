@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Upload a GeoTIFF to My Imagery</title>
+<h1>Upload a GeoTIFF to My Imagery</h1>
+<form><label>GeoTIFF <input type="file" accept=".tif,.tiff" required></label> <button>Upload</button></form>
+<p role="status"></p>
+<script>
+const form = document.querySelector("form");
+const status = document.querySelector('[role="status"]');
+form.onsubmit = async event => {
+  event.preventDefault();
+  const file = form.querySelector("input").files[0];
+  if (!file) return;
+  form.querySelector("button").disabled = true;
+  status.textContent = "Uploading…";
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set("name", file.name);
+    const response = await fetch(url, { method: "PUT", body: file });
+    const result = await response.json();
+    if ([400, 413, 429].includes(response.status)) form.querySelector("button").disabled = false;
+    status.textContent = response.ok ? "Received by My Imagery. Return to your chat to check processing." : result.detail;
+  } catch { status.textContent = "Connection interrupted. Check the upload status in your chat."; }
+};
+</script></html>

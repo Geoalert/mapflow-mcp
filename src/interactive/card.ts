@@ -27,11 +27,17 @@ const UNUSED_IMAGES = /url\(images\/[^)]*\)/g;
 
 const origin = (url: string) => new URL(url).origin;
 
-let built: Promise<string> | undefined;
+const pages = new Map<string, Promise<string>>();
 
 /** The page, made once: the app's address for its requests, Leaflet, the script and the styles. */
-export function cardPage(config: InteractiveConfig): Promise<string> {
-	built ??= (async () => {
+export function cardPage(
+	config: InteractiveConfig,
+	brand = BRAND,
+): Promise<string> {
+	const key = JSON.stringify([config.baseUrl, brand]);
+	const cached = pages.get(key);
+	if (cached) return cached;
+	const built = (async () => {
 		const [leafletCss, css, leafletJs, js] = await Promise.all([
 			asset("vendor/leaflet/leaflet.css"),
 			asset("widget.css"),
@@ -43,24 +49,25 @@ export function cardPage(config: InteractiveConfig): Promise<string> {
 				throw new Error("an inlined script contains </script");
 		const settings = JSON.stringify({
 			base: config.baseUrl,
-			brand: BRAND,
+			brand,
 			platform: true,
 		}).replaceAll("</", "<\\/");
 		return (
 			'<!doctype html>\n<html lang="en"><head><meta charset="utf-8">' +
 			'<meta name="viewport" content="width=device-width, initial-scale=1">' +
-			`<title>${BRAND} session</title><style>${leafletCss.replace(UNUSED_IMAGES, "none")}</style><style>${css}</style></head>` +
+			`<title>${brand}</title><style>${leafletCss.replace(UNUSED_IMAGES, "none")}</style><style>${css}</style></head>` +
 			'<body><div id="app"></div>' +
 			`<script type="application/json" id="mapflow-interactive-config">${settings}</script>` +
 			`<script>${leafletJs}</script><script>${js}</script></body></html>\n`
 		);
 	})();
+	pages.set(key, built);
 	return built;
 }
 
 /** Forgets the page made (tests make it for another app). */
 export function resetCardPage() {
-	built = undefined;
+	pages.clear();
 }
 
 /** The page's `_meta`: the domains its sandbox may reach (the app for its data; the app and Mapflow for images), in
